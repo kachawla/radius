@@ -24,6 +24,8 @@ Please update the following to link the associated issue. This is required for s
 
 Fixes: #issue_number
 
+Test updates to this file
+
 ## Contributor checklist
 Please verify that the PR meets the following requirements, where applicable:
 
