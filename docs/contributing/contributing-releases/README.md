@@ -41,6 +41,7 @@ Follow the steps below to create an RC release.
    ```bash
    git clone git@github.com:radius-project/radius.git
    ```
+   Note: Forks are not supported yet.
 
 1. Create a new branch from `main`.
 
@@ -61,7 +62,7 @@ Follow the steps below to create an RC release.
 
 1. You may need to wait around ~20 minutes for the release assets to be built and published.
 
-1. There should be a GitHub workflow run in progress [here](https://github.com/radius-project/radius/actions/workflows/build.yaml) that was triggered by the `vx.y.z-rc1` tag. Monitor this workflow to ensure that it completes successfully. If it does, then the release candidate has been created.
+1. There should be a GitHub workflow run in progress [here](https://github.com/radius-project/radius/actions/workflows/build.yaml?query=branch%3Amain) that was triggered by the `vx.y.z-rc1` tag. Monitor this workflow to ensure that it completes successfully. If it does, then the release candidate has been created.
 
 1. Verify that an RC release was created on Github Releases for the current version ([Example](https://github.com/radius-project/radius/releases)).
 
