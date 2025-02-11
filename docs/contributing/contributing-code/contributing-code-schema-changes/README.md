@@ -72,7 +72,7 @@ Note: Alternatively, if you already have the Radius CLI installed, you can choos
     ```
 
 1. `cd` into the `hack/bicep-types-radius/generated` folder
-1. Run `bicep publish-provider <file> --target <ref>` to upload the schema changes to your file system. The file uploaded will be the `index.json` file as it contains all references to the types schema. The `<file-name>` can be named as desired, but we recommend using an archive (i.e. `.zip`, `.tgz`, etc). This will make it easier to view the files that get uploaded if needed.
+1. Run `bicep publish-extension <file> --target <ref>` to upload the schema changes to your file system. The file uploaded will be the `index.json` file as it contains all references to the types schema. The `<file-name>` can be named as desired, but we recommend using an archive (i.e. `.zip`, `.tgz`, etc). This will make it easier to view the files that get uploaded if needed.
 
     ```bash
     bicep publish-extension index.json --target <directory-path>/<file-name>
