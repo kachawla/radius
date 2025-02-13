@@ -1,9 +1,9 @@
 name: Example.Platform
-types: 
-  - name: openAIServices
+types:
+  openAIServices:
+    capabilities: ["SupportsRecipes"]
     apiVersions:
-      - name: '2023-10-01-preview'
-        capabilities: ["Recipe"]
+      '2023-10-01-preview':
         schema: 
           type: 'object'
           properties: 
