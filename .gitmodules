@@ -1,3 +1,12 @@
 [submodule "bicep-types"]
 	path = bicep-types
 	url = https://github.com/Azure/bicep-types
+[submodule "terraform-modules/redis"]
+	path = terraform-modules/redis
+	url = https://github.com/squareops/terraform-kubernetes-redis.git
+[submodule "terraform-modules/mysql"]
+	path = terraform-modules/mysql
+	url = https://github.com/squareops/terraform-kubernetes-mysql.git
+[submodule "terraform-modules/postgresql"]
+	path = terraform-modules/postgresql
+	url = https://github.com/ballj/terraform-kubernetes-postgresql.git
