@@ -72,27 +72,18 @@ func ParseTerraformModule(modulePath string) (*TerraformModule, error) {
 		Variables: []TerraformVariable{},
 	}
 
-	// Find all .tf files in the directory
-	err := filepath.Walk(modulePath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
+	// Find variable files only at the root level (not in subdirectories)
+	variableFiles := []string{"variables.tf", "vars.tf"}
+	
+	for _, filename := range variableFiles {
+		filePath := filepath.Join(modulePath, filename)
+		if _, err := os.Stat(filePath); err == nil {
+			variables, err := parseVariablesFromFile(filePath)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse file %s: %w", filePath, err)
+			}
+			module.Variables = append(module.Variables, variables...)
 		}
-
-		if !strings.HasSuffix(path, ".tf") {
-			return nil
-		}
-
-		variables, err := parseVariablesFromFile(path)
-		if err != nil {
-			return fmt.Errorf("failed to parse file %s: %w", path, err)
-		}
-
-		module.Variables = append(module.Variables, variables...)
-		return nil
-	})
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to walk directory: %w", err)
 	}
 
 	return module, nil

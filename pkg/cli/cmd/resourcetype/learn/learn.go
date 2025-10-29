@@ -186,7 +186,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	r.Output.LogInfo("Resource type learning completed successfully!")
-	r.Output.LogInfo("You can now use 'rad resource-type create --from-file %s' to register this resource type", 
+	r.Output.LogInfo("You can now use 'rad resource-type create --from-file %s' to register this resource type",
 		func() string {
 			if r.OutputFile != "" {
 				return r.OutputFile
