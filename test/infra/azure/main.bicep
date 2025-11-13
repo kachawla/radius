@@ -207,6 +207,7 @@ module deploymentScript './modules/deployment-script.bicep' = if (installKuberne
 
 // Create a resource lock to prevent accidental deletion of the resource group and all its resources.
 resource deletionLock 'Microsoft.Authorization/locks@2020-05-01' = if (enableDeletionLock) {
+  scope: resourceGroup()
   name: 'DeleteLock'
   properties: {
     level: 'CanNotDelete'
