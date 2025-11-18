@@ -49,7 +49,7 @@ type AzureCredentialManagementClientInterface interface {
 // It contains the kind of the credential (ServicePrincipal or WorkloadIdentity) and the properties for each kind.
 type AzureCredentialProperties struct {
 	// Kind is the credential kind (ServicePrincipal or WorkloadIdentity)
-	Kind string
+	Kind *string
 
 	// ServicePrincipal is the properties for an Azure service principal credential
 	ServicePrincipal *AzureServicePrincipalCredentialProperties
@@ -138,7 +138,7 @@ func (cpm *AzureCredentialManagementClient) Get(ctx context.Context, credentialN
 				Enabled: true,
 			},
 			AzureCredentials: &AzureCredentialProperties{
-				Kind: string(*azureServicePrincipal.Kind),
+				Kind: (*string)(azureServicePrincipal.Kind),
 				ServicePrincipal: &AzureServicePrincipalCredentialProperties{
 					ClientID: azureServicePrincipal.ClientID,
 					Kind:     (*string)(azureServicePrincipal.Kind),
@@ -160,7 +160,7 @@ func (cpm *AzureCredentialManagementClient) Get(ctx context.Context, credentialN
 				Enabled: true,
 			},
 			AzureCredentials: &AzureCredentialProperties{
-				Kind: string(*azureWorkloadIdentity.Kind),
+				Kind: (*string)(azureWorkloadIdentity.Kind),
 				WorkloadIdentity: &AzureWorkloadIdentityCredentialProperties{
 					ClientID: azureWorkloadIdentity.ClientID,
 					Kind:     (*string)(azureWorkloadIdentity.Kind),

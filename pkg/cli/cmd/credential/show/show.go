@@ -131,13 +131,13 @@ func (r *Runner) Run(ctx context.Context) error {
 	var output output.FormatterOptions
 	switch r.Kind {
 	case "azure":
-		switch providers.AzureCredentials.Kind {
+		switch *providers.AzureCredentials.Kind {
 		case datamodel.AzureServicePrincipalCredentialKind:
 			output = credentialFormatAzureServicePrincipal()
 		case datamodel.AzureWorkloadIdentityCredentialKind:
 			output = credentialFormatAzureWorkloadIdentity()
 		default:
-			return fmt.Errorf("unknown Azure credential kind, expected ServicePrincipal or WorkloadIdentity (got %s)", providers.AzureCredentials.Kind)
+			return fmt.Errorf("unknown Azure credential kind, expected ServicePrincipal or WorkloadIdentity (got %s)", *providers.AzureCredentials.Kind)
 		}
 	case "aws":
 		switch *providers.AWSCredentials.Kind {
