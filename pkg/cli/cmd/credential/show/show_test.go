@@ -113,7 +113,7 @@ func Test_Run(t *testing.T) {
 					Enabled: true,
 				},
 				AzureCredentials: &cli_credential.AzureCredentialProperties{
-					Kind: to.Ptr("ServicePrincipal"),
+					Kind: "ServicePrincipal",
 				},
 			}
 
@@ -262,7 +262,7 @@ func Test_Run(t *testing.T) {
 				Enabled: true,
 			},
 			AzureCredentials: &cli_credential.AzureCredentialProperties{
-				Kind: to.Ptr("WorkloadIdentity"),
+				Kind: "WorkloadIdentity",
 			},
 		}
 

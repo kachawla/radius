@@ -33,7 +33,7 @@ func Test_credentialFormatAzureServicePrincipal(t *testing.T) {
 			Enabled: true,
 		},
 		AzureCredentials: &credential.AzureCredentialProperties{
-			Kind: to.Ptr("ServicePrincipal"),
+			Kind: "ServicePrincipal",
 			ServicePrincipal: &credential.AzureServicePrincipalCredentialProperties{
 				ClientID: to.Ptr("test-client-id"),
 				TenantID: to.Ptr("test-tenant-id"),
@@ -58,7 +58,7 @@ func Test_credentialFormat_Azure_WorkloadIdentity(t *testing.T) {
 			Enabled: true,
 		},
 		AzureCredentials: &credential.AzureCredentialProperties{
-			Kind: to.Ptr("WorkloadIdentity"),
+			Kind: "WorkloadIdentity",
 			WorkloadIdentity: &credential.AzureWorkloadIdentityCredentialProperties{
 				ClientID: to.Ptr("test-client-id"),
 				TenantID: to.Ptr("test-tenant-id"),
