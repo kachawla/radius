@@ -38,9 +38,7 @@ func Test_PanicRecoveryBehavior(t *testing.T) {
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					output.WriteString("Error: An unexpected internal error occurred\n")
-					output.WriteString(fmt.Sprintf("Details: %v\n", r))
-					output.WriteString("\nStack trace:\n")
+					output.WriteString(fmt.Sprintf("Error: An unexpected internal error occurred: %v\n\n", r))
 					output.WriteString(string(debug.Stack()))
 					output.WriteString("\nPlease report this issue at https://github.com/radius-project/radius/issues\n")
 					output.WriteString("") // Output an extra blank line for readability
@@ -54,9 +52,7 @@ func Test_PanicRecoveryBehavior(t *testing.T) {
 		result := output.String()
 
 		// Verify the output format matches what's in the Execute() function
-		require.Contains(t, result, "Error: An unexpected internal error occurred")
-		require.Contains(t, result, "Details: test panic message")
-		require.Contains(t, result, "Stack trace:")
+		require.Contains(t, result, "Error: An unexpected internal error occurred: test panic message")
 		require.Contains(t, result, "goroutine")
 		require.Contains(t, result, "Please report this issue at https://github.com/radius-project/radius/issues")
 	})
@@ -68,9 +64,7 @@ func Test_PanicRecoveryBehavior(t *testing.T) {
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					output.WriteString("Error: An unexpected internal error occurred\n")
-					output.WriteString(fmt.Sprintf("Details: %v\n", r))
-					output.WriteString("\nStack trace:\n")
+					output.WriteString(fmt.Sprintf("Error: An unexpected internal error occurred: %v\n\n", r))
 					output.WriteString(string(debug.Stack()))
 					output.WriteString("\nPlease report this issue at https://github.com/radius-project/radius/issues\n")
 					output.WriteString("")
@@ -95,22 +89,22 @@ func Test_PanicRecoveryBehavior(t *testing.T) {
 			{
 				name:        "string panic",
 				panicValue:  "string error",
-				expectedMsg: "Details: string error",
+				expectedMsg: "Error: An unexpected internal error occurred: string error",
 			},
 			{
 				name:        "error panic",
 				panicValue:  fmt.Errorf("error object"),
-				expectedMsg: "Details: error object",
+				expectedMsg: "Error: An unexpected internal error occurred: error object",
 			},
 			{
 				name:        "integer panic",
 				panicValue:  42,
-				expectedMsg: "Details: 42",
+				expectedMsg: "Error: An unexpected internal error occurred: 42",
 			},
 			{
 				name:        "nil panic",
 				panicValue:  nil,
-				expectedMsg: "Details: <nil>",
+				expectedMsg: "Error: An unexpected internal error occurred: <nil>",
 			},
 		}
 
@@ -121,7 +115,7 @@ func Test_PanicRecoveryBehavior(t *testing.T) {
 				func() {
 					defer func() {
 						if r := recover(); r != nil {
-							output.WriteString(fmt.Sprintf("Details: %v", r))
+							output.WriteString(fmt.Sprintf("Error: An unexpected internal error occurred: %v", r))
 						}
 					}()
 
