@@ -171,6 +171,16 @@ func Execute() error {
 		_ = shutdown(ctx)
 	}()
 
+	// Global panic recovery middleware
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Error: An unexpected panic occurred")
+			fmt.Printf("Panic: %v\n", r)
+			fmt.Println("\nPlease report this issue at https://github.com/radius-project/radius/issues")
+			fmt.Println("") // Output an extra blank line for readability
+		}
+	}()
+
 	tr := otel.Tracer(tracerName)
 	spanName := getRootSpanName()
 	ctx, span := tr.Start(ctx, spanName)

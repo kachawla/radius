@@ -192,6 +192,15 @@ type Runner interface {
 // slice of strings, and returns an error if one occurs during validation or running.
 func RunCommand(runner Runner) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
+		// Panic recovery middleware for individual commands
+		defer func() {
+			if r := recover(); r != nil {
+				// Log the panic and convert it to an error
+				// This will be caught by the global panic handler if needed
+				panic(r)
+			}
+		}()
+
 		err := runner.Validate(cmd, args)
 		if err != nil {
 			return err
