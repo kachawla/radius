@@ -19,6 +19,7 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"runtime/debug"
 	"strings"
 	"testing"
 
@@ -28,7 +29,7 @@ import (
 // Test_PanicRecoveryBehavior tests the panic recovery middleware behavior
 // by simulating what happens when a panic occurs during command execution.
 func Test_PanicRecoveryBehavior(t *testing.T) {
-	t.Run("panic recovery captures and formats panic message", func(t *testing.T) {
+	t.Run("panic recovery captures and formats panic message with stack trace", func(t *testing.T) {
 		// This test verifies the panic recovery behavior by capturing
 		// what the deferred function would output
 		var output bytes.Buffer
@@ -39,6 +40,8 @@ func Test_PanicRecoveryBehavior(t *testing.T) {
 				if r := recover(); r != nil {
 					output.WriteString("Error: An unexpected panic occurred\n")
 					output.WriteString(fmt.Sprintf("Panic: %v\n", r))
+					output.WriteString("\nStack trace:\n")
+					output.WriteString(string(debug.Stack()))
 					output.WriteString("\nPlease report this issue at https://github.com/radius-project/radius/issues\n")
 					output.WriteString("") // Output an extra blank line for readability
 				}
@@ -53,6 +56,8 @@ func Test_PanicRecoveryBehavior(t *testing.T) {
 		// Verify the output format matches what's in the Execute() function
 		require.Contains(t, result, "Error: An unexpected panic occurred")
 		require.Contains(t, result, "Panic: test panic message")
+		require.Contains(t, result, "Stack trace:")
+		require.Contains(t, result, "goroutine")
 		require.Contains(t, result, "Please report this issue at https://github.com/radius-project/radius/issues")
 	})
 
@@ -65,6 +70,8 @@ func Test_PanicRecoveryBehavior(t *testing.T) {
 				if r := recover(); r != nil {
 					output.WriteString("Error: An unexpected panic occurred\n")
 					output.WriteString(fmt.Sprintf("Panic: %v\n", r))
+					output.WriteString("\nStack trace:\n")
+					output.WriteString(string(debug.Stack()))
 					output.WriteString("\nPlease report this issue at https://github.com/radius-project/radius/issues\n")
 					output.WriteString("")
 				}

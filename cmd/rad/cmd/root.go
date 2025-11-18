@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"runtime/debug"
 	"strings"
 
 	"github.com/acarl005/stripansi"
@@ -176,6 +177,8 @@ func Execute() error {
 		if r := recover(); r != nil {
 			fmt.Println("Error: An unexpected panic occurred")
 			fmt.Printf("Panic: %v\n", r)
+			fmt.Println("\nStack trace:")
+			fmt.Println(string(debug.Stack()))
 			fmt.Println("\nPlease report this issue at https://github.com/radius-project/radius/issues")
 			fmt.Println("") // Output an extra blank line for readability
 		}
