@@ -175,8 +175,8 @@ func Execute() error {
 	// Global panic recovery middleware
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Println("Error: An unexpected panic occurred")
-			fmt.Printf("Panic: %v\n", r)
+			fmt.Println("Error: An unexpected internal error occurred")
+			fmt.Printf("Details: %v\n", r)
 			fmt.Println("\nStack trace:")
 			fmt.Println(string(debug.Stack()))
 			fmt.Println("\nPlease report this issue at https://github.com/radius-project/radius/issues")

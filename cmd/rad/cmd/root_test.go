@@ -38,8 +38,8 @@ func Test_PanicRecoveryBehavior(t *testing.T) {
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					output.WriteString("Error: An unexpected panic occurred\n")
-					output.WriteString(fmt.Sprintf("Panic: %v\n", r))
+					output.WriteString("Error: An unexpected internal error occurred\n")
+					output.WriteString(fmt.Sprintf("Details: %v\n", r))
 					output.WriteString("\nStack trace:\n")
 					output.WriteString(string(debug.Stack()))
 					output.WriteString("\nPlease report this issue at https://github.com/radius-project/radius/issues\n")
@@ -54,8 +54,8 @@ func Test_PanicRecoveryBehavior(t *testing.T) {
 		result := output.String()
 
 		// Verify the output format matches what's in the Execute() function
-		require.Contains(t, result, "Error: An unexpected panic occurred")
-		require.Contains(t, result, "Panic: test panic message")
+		require.Contains(t, result, "Error: An unexpected internal error occurred")
+		require.Contains(t, result, "Details: test panic message")
 		require.Contains(t, result, "Stack trace:")
 		require.Contains(t, result, "goroutine")
 		require.Contains(t, result, "Please report this issue at https://github.com/radius-project/radius/issues")
@@ -68,8 +68,8 @@ func Test_PanicRecoveryBehavior(t *testing.T) {
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					output.WriteString("Error: An unexpected panic occurred\n")
-					output.WriteString(fmt.Sprintf("Panic: %v\n", r))
+					output.WriteString("Error: An unexpected internal error occurred\n")
+					output.WriteString(fmt.Sprintf("Details: %v\n", r))
 					output.WriteString("\nStack trace:\n")
 					output.WriteString(string(debug.Stack()))
 					output.WriteString("\nPlease report this issue at https://github.com/radius-project/radius/issues\n")
@@ -95,22 +95,22 @@ func Test_PanicRecoveryBehavior(t *testing.T) {
 			{
 				name:        "string panic",
 				panicValue:  "string error",
-				expectedMsg: "Panic: string error",
+				expectedMsg: "Details: string error",
 			},
 			{
 				name:        "error panic",
 				panicValue:  fmt.Errorf("error object"),
-				expectedMsg: "Panic: error object",
+				expectedMsg: "Details: error object",
 			},
 			{
 				name:        "integer panic",
 				panicValue:  42,
-				expectedMsg: "Panic: 42",
+				expectedMsg: "Details: 42",
 			},
 			{
 				name:        "nil panic",
 				panicValue:  nil,
-				expectedMsg: "Panic: <nil>",
+				expectedMsg: "Details: <nil>",
 			},
 		}
 
@@ -121,7 +121,7 @@ func Test_PanicRecoveryBehavior(t *testing.T) {
 				func() {
 					defer func() {
 						if r := recover(); r != nil {
-							output.WriteString(fmt.Sprintf("Panic: %v", r))
+							output.WriteString(fmt.Sprintf("Details: %v", r))
 						}
 					}()
 
