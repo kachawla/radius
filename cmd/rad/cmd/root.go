@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"runtime/debug"
 	"strings"
 
 	"github.com/acarl005/stripansi"
@@ -157,6 +158,16 @@ func prettyPrintJSON(o any) (string, error) {
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 // It also initializes the tracerprovider for cli.
 //
+// handlePanic is the global panic recovery handler that formats and displays panic information
+func handlePanic() {
+	if r := recover(); r != nil {
+		fmt.Fprintf(os.Stdout, "Error: An unexpected internal error occurred: %v\n\n", r)
+		fmt.Fprint(os.Stdout, string(debug.Stack()))
+		fmt.Fprintln(os.Stdout, "\nPlease report this issue at https://github.com/radius-project/radius/issues")
+		fmt.Fprintln(os.Stdout, "") // Output an extra blank line for readability
+	}
+}
+
 // Execute returns true
 func Execute() error {
 	ctx := context.WithValue(context.Background(), ConfigHolderKey, ConfigHolder)
@@ -170,6 +181,9 @@ func Execute() error {
 	defer func() {
 		_ = shutdown(ctx)
 	}()
+
+	// Global panic recovery middleware
+	defer handlePanic()
 
 	tr := otel.Tracer(tracerName)
 	spanName := getRootSpanName()
