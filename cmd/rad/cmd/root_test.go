@@ -26,30 +26,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// panicRecoveryHandler simulates the panic recovery logic from Execute()
-// This is extracted to avoid duplication across test cases
-func panicRecoveryHandler(output *bytes.Buffer) {
-	if r := recover(); r != nil {
-		output.WriteString(fmt.Sprintf("Error: An unexpected internal error occurred: %v\n\n", r))
-		output.WriteString(string(debug.Stack()))
-		output.WriteString("\nPlease report this issue at https://github.com/radius-project/radius/issues\n")
-		output.WriteString("") // Output an extra blank line for readability
-	}
-}
-
-// Test_PanicRecoveryBehavior tests the panic recovery middleware behavior
-// by simulating what happens when a panic occurs during command execution.
-func Test_PanicRecoveryBehavior(t *testing.T) {
+// Test_PanicRecoveryMiddleware tests the panic recovery middleware behavior
+// by executing the exact same defer/recover pattern used in Execute() (lines 176-183)
+func Test_PanicRecoveryMiddleware(t *testing.T) {
 	t.Run("panic recovery captures and formats panic message with stack trace", func(t *testing.T) {
-		// This test verifies the panic recovery behavior by capturing
-		// what the deferred function would output
 		var output bytes.Buffer
 
-		// Simulate the panic recovery logic
+		// This function simulates what happens inside Execute()
+		// It uses the exact same defer/recover pattern from lines 176-183 of root.go
 		func() {
-			defer panicRecoveryHandler(&output)
+			// Global panic recovery middleware - copied from Execute()
+			defer func() {
+				if r := recover(); r != nil {
+					output.WriteString(fmt.Sprintf("Error: An unexpected internal error occurred: %v\n\n", r))
+					output.WriteString(string(debug.Stack()))
+					output.WriteString("\nPlease report this issue at https://github.com/radius-project/radius/issues\n")
+					output.WriteString("") // Output an extra blank line for readability
+				}
+			}()
 
-			// Simulate a panic
+			// Simulate a panic that would occur during command execution
 			panic("test panic message")
 		}()
 
@@ -66,7 +62,14 @@ func Test_PanicRecoveryBehavior(t *testing.T) {
 
 		// Simulate the panic recovery logic without a panic
 		func() {
-			defer panicRecoveryHandler(&output)
+			defer func() {
+				if r := recover(); r != nil {
+					output.WriteString(fmt.Sprintf("Error: An unexpected internal error occurred: %v\n\n", r))
+					output.WriteString(string(debug.Stack()))
+					output.WriteString("\nPlease report this issue at https://github.com/radius-project/radius/issues\n")
+					output.WriteString("")
+				}
+			}()
 
 			// No panic occurs
 		}()
@@ -99,7 +102,7 @@ func Test_PanicRecoveryBehavior(t *testing.T) {
 				expectedMsg: "Error: An unexpected internal error occurred: 42",
 			},
 			{
-				name:        "nil value panic",
+				name:        "nil pointer panic",
 				panicValue:  (*int)(nil),
 				expectedMsg: "Error: An unexpected internal error occurred: <nil>",
 			},
@@ -123,6 +126,47 @@ func Test_PanicRecoveryBehavior(t *testing.T) {
 				require.Contains(t, result, tc.expectedMsg)
 			})
 		}
+	})
+}
+
+func Test_prettyPrintRPError(t *testing.T) {
+	t.Run("handles standard error", func(t *testing.T) {
+		err := fmt.Errorf("test error message")
+		result := prettyPrintRPError(err)
+		require.Contains(t, result, "test error")
+	})
+}
+
+func Test_prettyPrintJSON(t *testing.T) {
+	t.Run("formats JSON correctly", func(t *testing.T) {
+		obj := map[string]string{"key": "value"}
+		result, err := prettyPrintJSON(obj)
+		require.NoError(t, err)
+		require.Contains(t, result, "key")
+		require.Contains(t, result, "value")
+		// Verify it's indented
+		require.True(t, strings.Contains(result, "\n"))
+	})
+
+	t.Run("handles invalid JSON", func(t *testing.T) {
+		// Create something that can't be marshalled
+		invalidObj := make(chan int)
+		_, err := prettyPrintJSON(invalidObj)
+		require.Error(t, err)
+	})
+
+	t.Run("formats complex objects", func(t *testing.T) {
+		obj := map[string]interface{}{
+			"nested": map[string]string{
+				"inner": "value",
+			},
+			"array": []string{"a", "b", "c"},
+		}
+		result, err := prettyPrintJSON(obj)
+		require.NoError(t, err)
+		require.Contains(t, result, "nested")
+		require.Contains(t, result, "inner")
+		require.Contains(t, result, "array")
 	})
 }
 
