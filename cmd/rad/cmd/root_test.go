@@ -124,9 +124,10 @@ func (s *stdoutCapture) String() string {
 }
 
 func (s *stdoutCapture) Restore() {
-	os.Stdout = s.oldOut
 	s.writer.Close()
 	io.Copy(s.buffer, s.reader)
+	s.reader.Close()
+	os.Stdout = s.oldOut
 }
 
 // captureStdout captures stdout for testing purposes
