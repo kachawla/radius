@@ -158,6 +158,16 @@ func prettyPrintJSON(o any) (string, error) {
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 // It also initializes the tracerprovider for cli.
 //
+// handlePanic is the global panic recovery handler that formats and displays panic information
+func handlePanic() {
+	if r := recover(); r != nil {
+		fmt.Printf("Error: An unexpected internal error occurred: %v\n\n", r)
+		fmt.Println(string(debug.Stack()))
+		fmt.Println("\nPlease report this issue at https://github.com/radius-project/radius/issues")
+		fmt.Println("") // Output an extra blank line for readability
+	}
+}
+
 // Execute returns true
 func Execute() error {
 	ctx := context.WithValue(context.Background(), ConfigHolderKey, ConfigHolder)
@@ -173,14 +183,7 @@ func Execute() error {
 	}()
 
 	// Global panic recovery middleware
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Printf("Error: An unexpected internal error occurred: %v\n\n", r)
-			fmt.Println(string(debug.Stack()))
-			fmt.Println("\nPlease report this issue at https://github.com/radius-project/radius/issues")
-			fmt.Println("") // Output an extra blank line for readability
-		}
-	}()
+	defer handlePanic()
 
 	tr := otel.Tracer(tracerName)
 	spanName := getRootSpanName()

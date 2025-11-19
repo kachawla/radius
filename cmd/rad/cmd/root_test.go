@@ -19,62 +19,47 @@ package cmd
 import (
 	"bytes"
 	"fmt"
-	"runtime/debug"
+	"io"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
-// Test_PanicRecoveryMiddleware tests the panic recovery middleware behavior
-// by executing the exact same defer/recover pattern used in Execute() (lines 176-183)
-func Test_PanicRecoveryMiddleware(t *testing.T) {
+// Test_HandlePanic tests the panic recovery handler directly
+func Test_HandlePanic(t *testing.T) {
 	t.Run("panic recovery captures and formats panic message with stack trace", func(t *testing.T) {
-		var output bytes.Buffer
+		// Capture stdout
+		oldStdout := captureStdout(t)
+		defer oldStdout.Restore()
 
-		// This function simulates what happens inside Execute()
-		// It uses the exact same defer/recover pattern from lines 176-183 of root.go
+		// Execute the panic recovery by calling handlePanic in a defer after a panic
 		func() {
-			// Global panic recovery middleware - copied from Execute()
-			defer func() {
-				if r := recover(); r != nil {
-					output.WriteString(fmt.Sprintf("Error: An unexpected internal error occurred: %v\n\n", r))
-					output.WriteString(string(debug.Stack()))
-					output.WriteString("\nPlease report this issue at https://github.com/radius-project/radius/issues\n")
-					output.WriteString("") // Output an extra blank line for readability
-				}
-			}()
-
-			// Simulate a panic that would occur during command execution
+			defer handlePanic()
 			panic("test panic message")
 		}()
 
-		result := output.String()
+		result := oldStdout.String()
 
-		// Verify the output format matches what's in the Execute() function
+		// Verify the output format
 		require.Contains(t, result, "Error: An unexpected internal error occurred: test panic message")
 		require.Contains(t, result, "goroutine")
 		require.Contains(t, result, "Please report this issue at https://github.com/radius-project/radius/issues")
 	})
 
 	t.Run("no panic recovery output when no panic occurs", func(t *testing.T) {
-		var output bytes.Buffer
+		// Capture stdout
+		oldStdout := captureStdout(t)
+		defer oldStdout.Restore()
 
-		// Simulate the panic recovery logic without a panic
+		// Call handlePanic without a panic
 		func() {
-			defer func() {
-				if r := recover(); r != nil {
-					output.WriteString(fmt.Sprintf("Error: An unexpected internal error occurred: %v\n\n", r))
-					output.WriteString(string(debug.Stack()))
-					output.WriteString("\nPlease report this issue at https://github.com/radius-project/radius/issues\n")
-					output.WriteString("")
-				}
-			}()
-
+			defer handlePanic()
 			// No panic occurs
 		}()
 
-		result := output.String()
+		result := oldStdout.String()
 
 		// Verify no output when there's no panic
 		require.Empty(t, result)
@@ -110,23 +95,56 @@ func Test_PanicRecoveryMiddleware(t *testing.T) {
 
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
-				var output bytes.Buffer
+				// Capture stdout
+				oldStdout := captureStdout(t)
+				defer oldStdout.Restore()
 
 				func() {
-					defer func() {
-						if r := recover(); r != nil {
-							output.WriteString(fmt.Sprintf("Error: An unexpected internal error occurred: %v", r))
-						}
-					}()
-
+					defer handlePanic()
 					panic(tc.panicValue)
 				}()
 
-				result := output.String()
+				result := oldStdout.String()
 				require.Contains(t, result, tc.expectedMsg)
 			})
 		}
 	})
+}
+
+// stdoutCapture helps capture stdout for testing
+type stdoutCapture struct {
+	buffer  *bytes.Buffer
+	oldOut  *os.File
+	reader  *os.File
+	writer  *os.File
+}
+
+func (s *stdoutCapture) String() string {
+	return s.buffer.String()
+}
+
+func (s *stdoutCapture) Restore() {
+	os.Stdout = s.oldOut
+	s.writer.Close()
+	io.Copy(s.buffer, s.reader)
+}
+
+// captureStdout captures stdout for testing purposes
+func captureStdout(t *testing.T) *stdoutCapture {
+	t.Helper()
+	
+	oldOut := os.Stdout
+	reader, writer, err := os.Pipe()
+	require.NoError(t, err)
+	
+	os.Stdout = writer
+	
+	return &stdoutCapture{
+		buffer: &bytes.Buffer{},
+		oldOut: oldOut,
+		reader: reader,
+		writer: writer,
+	}
 }
 
 func Test_prettyPrintRPError(t *testing.T) {
