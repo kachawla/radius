@@ -26,6 +26,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// panicRecoveryHandler simulates the panic recovery logic from Execute()
+// This is extracted to avoid duplication across test cases
+func panicRecoveryHandler(output *bytes.Buffer) {
+	if r := recover(); r != nil {
+		output.WriteString(fmt.Sprintf("Error: An unexpected internal error occurred: %v\n\n", r))
+		output.WriteString(string(debug.Stack()))
+		output.WriteString("\nPlease report this issue at https://github.com/radius-project/radius/issues\n")
+		output.WriteString("") // Output an extra blank line for readability
+	}
+}
+
 // Test_PanicRecoveryBehavior tests the panic recovery middleware behavior
 // by simulating what happens when a panic occurs during command execution.
 func Test_PanicRecoveryBehavior(t *testing.T) {
@@ -36,14 +47,7 @@ func Test_PanicRecoveryBehavior(t *testing.T) {
 
 		// Simulate the panic recovery logic
 		func() {
-			defer func() {
-				if r := recover(); r != nil {
-					output.WriteString(fmt.Sprintf("Error: An unexpected internal error occurred: %v\n\n", r))
-					output.WriteString(string(debug.Stack()))
-					output.WriteString("\nPlease report this issue at https://github.com/radius-project/radius/issues\n")
-					output.WriteString("") // Output an extra blank line for readability
-				}
-			}()
+			defer panicRecoveryHandler(&output)
 
 			// Simulate a panic
 			panic("test panic message")
@@ -62,14 +66,7 @@ func Test_PanicRecoveryBehavior(t *testing.T) {
 
 		// Simulate the panic recovery logic without a panic
 		func() {
-			defer func() {
-				if r := recover(); r != nil {
-					output.WriteString(fmt.Sprintf("Error: An unexpected internal error occurred: %v\n\n", r))
-					output.WriteString(string(debug.Stack()))
-					output.WriteString("\nPlease report this issue at https://github.com/radius-project/radius/issues\n")
-					output.WriteString("")
-				}
-			}()
+			defer panicRecoveryHandler(&output)
 
 			// No panic occurs
 		}()
