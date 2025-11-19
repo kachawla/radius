@@ -99,8 +99,8 @@ func Test_PanicRecoveryBehavior(t *testing.T) {
 				expectedMsg: "Error: An unexpected internal error occurred: 42",
 			},
 			{
-				name:        "nil panic",
-				panicValue:  nil,
+				name:        "nil value panic",
+				panicValue:  (*int)(nil),
 				expectedMsg: "Error: An unexpected internal error occurred: <nil>",
 			},
 		}
