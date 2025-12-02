@@ -299,6 +299,9 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	// Create application if specified. This supports the case where the application resource
 	// is not specified in Bicep. Creating the application automatically helps us "bootstrap" in a new environment.
+	// Note: This only applies when the environment already exists. If the template is creating the environment,
+	// r.EnvironmentNameOrID will be empty and we'll skip this step (the template deployment will create
+	// whatever resources it defines).
 	if r.ApplicationName != "" && r.EnvironmentNameOrID != "" {
 		client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 		if err != nil {

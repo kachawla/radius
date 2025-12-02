@@ -20,6 +20,11 @@ import (
 	"strings"
 )
 
+const (
+	// EnvironmentResourceType is the resource type for Radius environments
+	EnvironmentResourceType = "Applications.Core/environments"
+)
+
 // ContainsEnvironmentResource checks if the template contains an Applications.Core/environments resource.
 // This function inspects the compiled ARM template's resources array to determine if an environment
 // resource will be created as part of the deployment.
@@ -53,10 +58,10 @@ func ContainsEnvironmentResource(template map[string]any) bool {
 		}
 
 		// Check if this is an environment resource
-		// We check case-insensitively and handle both forms:
+		// We check case-insensitively to handle both:
 		// - Applications.Core/environments
 		// - applications.core/environments
-		if strings.EqualFold(resourceType, "Applications.Core/environments") {
+		if strings.EqualFold(resourceType, EnvironmentResourceType) {
 			return true
 		}
 	}

@@ -27,7 +27,7 @@ func Test_ContainsEnvironmentResource(t *testing.T) {
 		template := map[string]any{
 			"resources": []interface{}{
 				map[string]interface{}{
-					"type": "Applications.Core/environments",
+					"type": EnvironmentResourceType,
 					"name": "my-env",
 				},
 			},
