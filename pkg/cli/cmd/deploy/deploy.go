@@ -203,14 +203,18 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Initialize providers - will be populated with environment data if available
+	r.Providers = &clients.Providers{}
+	r.Providers.Radius = &clients.RadiusProvider{}
+
 	// Validate that the environment exists if one was provided.
 	// If the template creates an environment and no environment was specified, we skip this validation.
-	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(cmd.Context(), *r.Workspace)
-	if err != nil {
-		return err
-	}
-
 	if r.EnvironmentNameOrID != "" {
+		client, err := r.ConnectionFactory.CreateApplicationsManagementClient(cmd.Context(), *r.Workspace)
+		if err != nil {
+			return err
+		}
+
 		env, err := client.GetEnvironment(cmd.Context(), r.EnvironmentNameOrID)
 		if err != nil {
 			// If the error is not a 404, return it
@@ -228,15 +232,9 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 			// This is fine, because an environment is not required.
 		}
 
-		r.Providers = &clients.Providers{}
-		r.Providers.Radius = &clients.RadiusProvider{}
 		if env.ID != nil {
 			r.Providers.Radius.EnvironmentID = *env.ID
 			r.Workspace.Environment = r.Providers.Radius.EnvironmentID
-		}
-
-		if r.ApplicationName != "" {
-			r.Providers.Radius.ApplicationID = r.Workspace.Scope + "/providers/applications.core/applications/" + r.ApplicationName
 		}
 
 		if env.Properties != nil && env.Properties.Providers != nil {
@@ -251,13 +249,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 				}
 			}
 		}
-	} else {
-		// No environment provided - initialize empty providers
-		r.Providers = &clients.Providers{}
-		r.Providers.Radius = &clients.RadiusProvider{}
-		if r.ApplicationName != "" {
-			r.Providers.Radius.ApplicationID = r.Workspace.Scope + "/providers/applications.core/applications/" + r.ApplicationName
-		}
+	}
+
+	// Set application ID if application name is provided
+	if r.ApplicationName != "" {
+		r.Providers.Radius.ApplicationID = r.Workspace.Scope + "/providers/applications.core/applications/" + r.ApplicationName
 	}
 
 	parameterArgs, err := cmd.Flags().GetStringArray("parameters")
