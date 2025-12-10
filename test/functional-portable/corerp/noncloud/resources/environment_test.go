@@ -46,32 +46,3 @@ func Test_Environment(t *testing.T) {
 
 	test.Test(t)
 }
-
-// Test_Environment_CreateFromTemplate verifies that an environment can be created
-// by deploying a Bicep template that defines an environment resource, without
-// specifying an existing environment via the --environment flag.
-// This validates the fix for: https://github.com/radius-project/radius/issues/9453
-func Test_Environment_CreateFromTemplate(t *testing.T) {
-	template := "testdata/corerp-resources-environment-create.bicep"
-	name := "corerp-resources-environment-create"
-
-	test := rp.NewRPTest(t, name, []rp.TestStep{
-		{
-			// Deploy without specifying --environment flag
-			// The environment will be created from the template
-			Executor: step.NewDeployExecutor(template),
-			RPResources: &validation.RPResourceSet{
-				Resources: []validation.RPResource{
-					{
-						Name: "corerp-resources-environment-create-env",
-						Type: validation.EnvironmentsResource,
-					},
-				},
-			},
-			// Environment should not render any K8s Objects directly
-			K8sObjects: &validation.K8sObjectSet{},
-		},
-	})
-
-	test.Test(t)
-}

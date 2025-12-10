@@ -4,13 +4,13 @@ extension radius
 param location string = 'global'
 
 resource env 'Applications.Core/environments@2023-10-01-preview' = {
-  name: 'corerp-resources-environment-create-env'
+  name: 'deploy-env-test'
   location: location
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'corerp-resources-environment-create-env'
+      namespace: 'default-deploy-env-test'
     }
   }
 }
