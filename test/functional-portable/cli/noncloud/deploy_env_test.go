@@ -22,8 +22,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
+	"github.com/google/uuid"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/testcontext"
@@ -74,7 +74,7 @@ func Test_DeployEnvironmentTemplate(t *testing.T) {
 	cli := radcli.NewCLI(t, tempConfigFile.Name())
 
 	// Generate a unique resource group name to avoid conflicts with parallel tests
-	uniqueGroupName := fmt.Sprintf("test-deploy-env-%d", time.Now().Unix())
+	uniqueGroupName := fmt.Sprintf("test-deploy-env-%s", uuid.New().String())
 	envName := "deploy-env-test"
 
 	// Ensure cleanup even if test fails
