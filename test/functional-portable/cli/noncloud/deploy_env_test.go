@@ -35,26 +35,43 @@ import (
 // specifying an existing environment via the --environment flag.
 //
 // This validates the fix for: https://github.com/radius-project/radius/issues/9453
-//
-// IMPORTANT NOTE: This is an end-to-end test that runs the actual `rad` CLI binary.
-// If the test workspace has a default environment configured (workspace.Environment),
-// the CLI will use it as a fallback even without the --environment flag. This means
-// the test validates the overall deployment flow but may not exercise the specific
-// templateCreatesEnvironment logic path if a workspace default exists.
-//
-// To verify the core fix logic (templateCreatesEnvironment check), see the unit test:
-// Test_Validate/rad_deploy_-_template_creates_environment in pkg/cli/cmd/deploy/deploy_test.go
-//
-// This functional test still provides value by:
-// 1. Verifying end-to-end deployment of environment templates works
-// 2. Ensuring no regressions in the overall deployment flow
-// 3. Testing the actual CLI binary behavior (not just mocked code paths)
 func Test_DeployEnvironmentTemplate(t *testing.T) {
 	ctx, cancel := testcontext.NewWithCancel(t)
 	t.Cleanup(cancel)
 
 	options := rp.NewRPTestOptions(t)
-	cli := radcli.NewCLI(t, options.ConfigFilePath)
+	
+	// CRITICAL: Create a custom config file WITHOUT a default environment to properly test the fix.
+	// If workspace.Environment is set, RequireEnvironmentNameOrID will use it as a fallback,
+	// bypassing the templateCreatesEnvironment logic entirely. We must ensure the deployment
+	// succeeds ONLY because the template creates an environment resource.
+	
+	// Get the connection details from the existing workspace
+	connectionKind := options.Workspace.Connection["kind"]
+	connectionContext := options.Workspace.Connection["context"]
+	
+	// Create a temporary config file with workspace that has NO default environment
+	tempConfigFile, err := os.CreateTemp("", "rad-test-config-*.yaml")
+	require.NoError(t, err, "Failed to create temp config file")
+	defer os.Remove(tempConfigFile.Name())
+	
+	// Build config YAML with workspace but NO environment field
+	configYAML := fmt.Sprintf(`workspaces:
+  default: test-workspace
+  items:
+    test-workspace:
+      connection:
+        kind: %v
+        context: %v
+`, connectionKind, connectionContext)
+	
+	_, err = tempConfigFile.WriteString(configYAML)
+	require.NoError(t, err, "Failed to write config file")
+	err = tempConfigFile.Close()
+	require.NoError(t, err, "Failed to close config file")
+	
+	// Use CLI with the custom config that has NO default environment
+	cli := radcli.NewCLI(t, tempConfigFile.Name())
 
 	// Generate a unique resource group name to avoid conflicts with parallel tests
 	uniqueGroupName := fmt.Sprintf("test-deploy-env-%d", time.Now().Unix())
@@ -69,7 +86,7 @@ func Test_DeployEnvironmentTemplate(t *testing.T) {
 
 	// Create the unique resource group
 	t.Logf("Creating resource group: %s", uniqueGroupName)
-	err := cli.GroupCreate(ctx, uniqueGroupName)
+	err = cli.GroupCreate(ctx, uniqueGroupName)
 	require.NoError(t, err, "Failed to create resource group")
 
 	// Get the template file path
