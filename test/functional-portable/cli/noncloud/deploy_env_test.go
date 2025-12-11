@@ -73,8 +73,9 @@ func Test_DeployEnvironmentTemplate(t *testing.T) {
 	showOpts := radcli.ShowOptions{Group: uniqueGroupName}
 
 	// Verify environment was created successfully
+	// Use ResourceShow instead of EnvShow since we're querying by group
 	t.Logf("Verifying environment was created: %s", envName)
-	output, err := cli.EnvShow(ctx, envName, showOpts)
+	output, err := cli.ResourceShow(ctx, "Applications.Core/environments", envName, showOpts)
 	require.NoError(t, err, "Failed to show environment - it may not have been created")
 	require.Contains(t, output, envName, "Environment should exist")
 
