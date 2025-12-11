@@ -33,7 +33,22 @@ import (
 // Test_DeployEnvironmentTemplate verifies that an environment can be created
 // by deploying a Bicep template that defines an environment resource, without
 // specifying an existing environment via the --environment flag.
+//
 // This validates the fix for: https://github.com/radius-project/radius/issues/9453
+//
+// IMPORTANT NOTE: This is an end-to-end test that runs the actual `rad` CLI binary.
+// If the test workspace has a default environment configured (workspace.Environment),
+// the CLI will use it as a fallback even without the --environment flag. This means
+// the test validates the overall deployment flow but may not exercise the specific
+// templateCreatesEnvironment logic path if a workspace default exists.
+//
+// To verify the core fix logic (templateCreatesEnvironment check), see the unit test:
+// Test_Validate/rad_deploy_-_template_creates_environment in pkg/cli/cmd/deploy/deploy_test.go
+//
+// This functional test still provides value by:
+// 1. Verifying end-to-end deployment of environment templates works
+// 2. Ensuring no regressions in the overall deployment flow
+// 3. Testing the actual CLI binary behavior (not just mocked code paths)
 func Test_DeployEnvironmentTemplate(t *testing.T) {
 	ctx, cancel := testcontext.NewWithCancel(t)
 	t.Cleanup(cancel)
