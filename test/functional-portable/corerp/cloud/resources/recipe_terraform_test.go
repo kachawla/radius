@@ -25,6 +25,8 @@ package resource_test
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"strings"
 	"testing"
 
@@ -50,9 +52,25 @@ func Test_TerraformRecipe_AzureResourceGroup(t *testing.T) {
 	appName := "corerp-resources-terraform-azrg-app"
 	envName := "corerp-resources-terraform-azrg-env"
 
+	// Get Azure subscription ID and resource group for provider scope
+	subscriptionID := os.Getenv("AZURE_SUBSCRIPTION_ID")
+	resourceGroupName := os.Getenv("INTEGRATION_TEST_RESOURCE_GROUP_NAME")
+	
+	// Build Azure scope parameter if Azure is configured
+	azureScopeParam := ""
+	if subscriptionID != "" && resourceGroupName != "" {
+		azureScope := fmt.Sprintf("/subscriptions/%s/resourceGroups/%s", subscriptionID, resourceGroupName)
+		azureScopeParam = "azureScope=" + azureScope
+	}
+
+	params := []string{testutil.GetTerraformRecipeModuleServerURL(), "appName=" + appName}
+	if azureScopeParam != "" {
+		params = append(params, azureScopeParam)
+	}
+
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, testutil.GetTerraformRecipeModuleServerURL(), "appName="+appName),
+			Executor: step.NewDeployExecutor(template, params...),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{

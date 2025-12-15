@@ -8,6 +8,9 @@ param moduleServer string
 @description('Name of the Radius Application.')
 param appName string
 
+@description('Azure scope for the environment provider configuration.')
+param azureScope string = ''
+
 resource env 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'corerp-resources-terraform-azrg-env'
   properties: {
@@ -16,11 +19,11 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       resourceId: 'self'
       namespace: 'corerp-resources-terraform-azrg-env'
     }
-    providers: {
+    providers: azureScope != '' ? {
       azure: {
-        scope: resourceGroup().id
+        scope: azureScope
       }
-    }
+    } : {}
     recipes: {
       'Applications.Core/extenders': {
         default: {
