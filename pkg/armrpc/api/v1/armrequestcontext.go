@@ -202,6 +202,8 @@ func FromARMRequest(r *http.Request, pathBase, location string) (*ARMRequestCont
 		return nil, err
 	}
 
+	apiVersion := r.URL.Query().Get(APIVersionParameterName)
+
 	rpcCtx := &ARMRequestContext{
 		ResourceID:      rID,
 		ClientRequestID: r.Header.Get(ClientRequestIDHeader),
@@ -216,7 +218,7 @@ func FromARMRequest(r *http.Request, pathBase, location string) (*ARMRequestCont
 		ClientPrincipalName: r.Header.Get(ClientPrincipalIDHeader),
 		ClientPrincipalID:   r.Header.Get(ClientPrincipalIDHeader),
 
-		APIVersion:        r.URL.Query().Get(APIVersionParameterName),
+		APIVersion:        apiVersion,
 		AcceptLanguage:    r.Header.Get(AcceptLanguageHeader),
 		ClientReferer:     r.Header.Get(RefererHeader),
 		UserAgent:         r.UserAgent(),
@@ -231,6 +233,11 @@ func FromARMRequest(r *http.Request, pathBase, location string) (*ARMRequestCont
 
 		HTTPMethod:  r.Method,
 		OriginalURL: *r.URL,
+	}
+
+	// Log deprecation warning for old API versions
+	if apiVersion == "2023-10-01-preview" {
+		log.Info("DEPRECATION WARNING: API version 2023-10-01-preview is deprecated. Please migrate to the new resource types with API version 2025-08-01-preview. See https://github.com/radius-project/design-notes/blob/main/features/2025-06-compute-extensibility-feature-spec.md for details.")
 	}
 
 	return rpcCtx, nil
