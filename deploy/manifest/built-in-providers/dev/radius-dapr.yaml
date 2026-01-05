@@ -1,0 +1,21 @@
+namespace: Radius.Dapr
+location:
+  global:
+    "http://localhost:8080"
+types:
+  configurationStores:
+    apiVersions:
+      "2025-08-01-preview":
+        schema: {}
+  pubSubBrokers:
+    apiVersions:
+      "2025-08-01-preview":
+        schema: {}
+  secretStores:
+    apiVersions:
+      "2025-08-01-preview":
+        schema: {}
+  stateStores:
+    apiVersions:
+      "2025-08-01-preview":
+        schema: {}
