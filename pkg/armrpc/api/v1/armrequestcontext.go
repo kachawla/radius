@@ -42,6 +42,9 @@ const (
 
 	// TopParameterName is an optional query parameter that defines the number of records requested by the client.
 	TopParameterName = "top"
+
+	// DeprecatedAPIVersion is the deprecated API version that will show a warning
+	DeprecatedAPIVersion = "2023-10-01-preview"
 )
 
 // The constants below define the default, max, and min values for the number of records to be returned by the server.
@@ -236,8 +239,8 @@ func FromARMRequest(r *http.Request, pathBase, location string) (*ARMRequestCont
 	}
 
 	// Log deprecation warning for old API versions
-	if apiVersion == "2023-10-01-preview" {
-		log.Info("DEPRECATION WARNING: API version 2023-10-01-preview is deprecated. Please migrate to the new resource types with API version 2025-08-01-preview. See https://github.com/radius-project/design-notes/blob/main/features/2025-06-compute-extensibility-feature-spec.md for details.")
+	if apiVersion == DeprecatedAPIVersion {
+		log.Info("DEPRECATION: API version 2023-10-01-preview is deprecated. Migrate to 2025-08-01-preview. See: https://aka.ms/radius-compute-extensibility")
 	}
 
 	return rpcCtx, nil
