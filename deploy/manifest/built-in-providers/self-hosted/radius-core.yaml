@@ -2,15 +2,35 @@ namespace: Radius.Core
 location:
   global: "http://applications-rp.radius-system:5443"
 types:
-  environments:
-    apiVersions:
-      "2025-08-01-preview":
-        schema: {}
   applications:
     apiVersions:
       "2025-08-01-preview":
         schema: {}
+  containers:
+    apiVersions:
+      "2025-08-01-preview":
+        schema: {}
+  environments:
+    apiVersions:
+      "2025-08-01-preview":
+        schema: {}
+  extenders:
+    apiVersions:
+      "2025-08-01-preview":
+        schema: {}
+  gateways:
+    apiVersions:
+      "2025-08-01-preview":
+        schema: {}
   recipePacks:
+    apiVersions:
+      "2025-08-01-preview":
+        schema: {}
+  secretStores:
+    apiVersions:
+      "2025-08-01-preview":
+        schema: {}
+  volumes:
     apiVersions:
       "2025-08-01-preview":
         schema: {}

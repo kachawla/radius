@@ -19,6 +19,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
@@ -26,6 +27,7 @@ import (
 	apictrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/server"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	corerp_setup "github.com/radius-project/radius/pkg/corerp/setup"
 )
 
 // APIService is the restful API server for Radius Resource Provider.
@@ -83,7 +85,15 @@ func (s *APIService) Run(ctx context.Context) error {
 					panic(err)
 				}
 
-				if err := b.ApplyAPIHandlers(ctx, r, opts, validator); err != nil {
+				// Collect middlewares for this builder
+				middlewares := []func(http.Handler) http.Handler{validator}
+				
+				// Add deprecation middleware for Applications.Core namespace
+				if b.Namespace() == "Applications.Core" {
+					middlewares = append(middlewares, corerp_setup.DeprecationMiddleware())
+				}
+
+				if err := b.ApplyAPIHandlers(ctx, r, opts, middlewares...); err != nil {
 					panic(err)
 				}
 			}
