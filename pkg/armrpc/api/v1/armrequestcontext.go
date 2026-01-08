@@ -42,6 +42,9 @@ const (
 
 	// TopParameterName is an optional query parameter that defines the number of records requested by the client.
 	TopParameterName = "top"
+
+	// DeprecatedAPIVersion is the deprecated API version that will show a warning
+	DeprecatedAPIVersion = "2023-10-01-preview"
 )
 
 // The constants below define the default, max, and min values for the number of records to be returned by the server.
@@ -202,6 +205,8 @@ func FromARMRequest(r *http.Request, pathBase, location string) (*ARMRequestCont
 		return nil, err
 	}
 
+	apiVersion := r.URL.Query().Get(APIVersionParameterName)
+
 	rpcCtx := &ARMRequestContext{
 		ResourceID:      rID,
 		ClientRequestID: r.Header.Get(ClientRequestIDHeader),
@@ -216,7 +221,7 @@ func FromARMRequest(r *http.Request, pathBase, location string) (*ARMRequestCont
 		ClientPrincipalName: r.Header.Get(ClientPrincipalIDHeader),
 		ClientPrincipalID:   r.Header.Get(ClientPrincipalIDHeader),
 
-		APIVersion:        r.URL.Query().Get(APIVersionParameterName),
+		APIVersion:        apiVersion,
 		AcceptLanguage:    r.Header.Get(AcceptLanguageHeader),
 		ClientReferer:     r.Header.Get(RefererHeader),
 		UserAgent:         r.UserAgent(),
@@ -231,6 +236,11 @@ func FromARMRequest(r *http.Request, pathBase, location string) (*ARMRequestCont
 
 		HTTPMethod:  r.Method,
 		OriginalURL: *r.URL,
+	}
+
+	// Log deprecation warning for old API versions
+	if apiVersion == DeprecatedAPIVersion {
+		log.Info("DEPRECATION: API version 2023-10-01-preview is deprecated. Migrate to 2025-08-01-preview. See: https://aka.ms/radius-compute-extensibility")
 	}
 
 	return rpcCtx, nil

@@ -1,0 +1,21 @@
+namespace: Radius.Data
+location:
+  global:
+    "http://applications-rp.radius-system:5443"
+types:
+  sqlDatabases:
+    apiVersions:
+      "2025-08-01-preview":
+        schema: {}
+  mongoDatabases:
+    apiVersions:
+      "2025-08-01-preview":
+        schema: {}
+  redisCaches:
+    apiVersions:
+      "2025-08-01-preview":
+        schema: {}
+  rabbitMQQueues:
+    apiVersions:
+      "2025-08-01-preview":
+        schema: {}

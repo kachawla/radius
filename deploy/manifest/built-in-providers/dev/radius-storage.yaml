@@ -1,0 +1,9 @@
+namespace: Radius.Storage
+location:
+  global:
+    "http://localhost:8080"
+types:
+  volumes:
+    apiVersions:
+      "2025-08-01-preview":
+        schema: {}

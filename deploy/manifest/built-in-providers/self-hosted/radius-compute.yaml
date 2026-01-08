@@ -1,0 +1,13 @@
+namespace: Radius.Compute
+location:
+  global:
+    "http://applications-rp.radius-system:5443"
+types:
+  containers:
+    apiVersions:
+      "2025-08-01-preview":
+        schema: {}
+  gateways:
+    apiVersions:
+      "2025-08-01-preview":
+        schema: {}

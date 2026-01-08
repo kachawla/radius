@@ -1,0 +1,9 @@
+namespace: Radius.Storage
+location:
+  global:
+    "http://applications-rp.radius-system:5443"
+types:
+  volumes:
+    apiVersions:
+      "2025-08-01-preview":
+        schema: {}
