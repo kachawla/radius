@@ -78,7 +78,7 @@ func Test_RadiusComputeContainers_Terraform(t *testing.T) {
 				container := deploy.Spec.Template.Spec.Containers[0]
 				require.Equal(t, "demo", container.Name)
 				require.Equal(t, "ghcr.io/radius-project/samples/demo:latest", container.Image)
-				
+
 				// Verify port configuration
 				require.Len(t, container.Ports, 1)
 				require.Equal(t, "web", container.Ports[0].Name)
@@ -88,7 +88,7 @@ func Test_RadiusComputeContainers_Terraform(t *testing.T) {
 				svc, err := test.Options.K8sClient.CoreV1().Services(envName).Get(ctx, containerName+"-demo", metav1.GetOptions{})
 				require.NoError(t, err)
 				require.NotNil(t, svc)
-				
+
 				// Verify service port configuration
 				require.Len(t, svc.Spec.Ports, 1)
 				require.Equal(t, "web", svc.Spec.Ports[0].Name)
