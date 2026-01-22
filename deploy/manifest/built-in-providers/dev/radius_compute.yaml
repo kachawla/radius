@@ -1,0 +1,22 @@
+namespace: Radius.Compute
+location:
+  global: "http://localhost:8082"
+types:
+  containers:
+    description: |
+      The Radius.Compute/containers Resource Type is the primary resource type for running one or more containers.
+    apiVersions:
+      "2025-08-01-preview":
+        schema: {}
+  routes:
+    description: |
+      The Radius.Compute/routes Resource Type defines network routes for responding to external clients.
+    apiVersions:
+      "2025-08-01-preview":
+        schema: {}
+  persistentVolumes:
+    description: |
+      The Radius.Compute/persistentVolumes Resource Type represents a persistent storage volume.
+    apiVersions:
+      "2025-08-01-preview":
+        schema: {}

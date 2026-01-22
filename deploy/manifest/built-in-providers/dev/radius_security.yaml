@@ -1,0 +1,10 @@
+namespace: Radius.Security
+location:
+  global: "http://localhost:8082"
+types:
+  secrets:
+    description: |
+      The Radius.Security/secrets Resource Type stores sensitive data such as tokens, passwords, keys, and certificates.
+    apiVersions:
+      "2025-08-01-preview":
+        schema: {}
