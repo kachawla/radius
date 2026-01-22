@@ -674,3 +674,96 @@ func Test_DynamicRP_TypeAnyValidation_Valid(t *testing.T) {
 
 	test.Test(t)
 }
+
+// Test_RadiusSecurity_Secrets tests the deployment and usage of Radius.Security/secrets resource type.
+// This resource type is registered by default with Radius installation.
+// The test validates:
+// 1. The Radius.Security/secrets resource type is available (registered by default)
+// 2. A secret can be created with both string and base64 encoded values
+// 3. The secret can be referenced by a container using environment variables
+func Test_RadiusSecurity_Secrets(t *testing.T) {
+	template := "testdata/radius-security-secrets.bicep"
+	appName := "secrets-test-app"
+	appNamespace := "secrets-test-env-secrets-test-app"
+	containerName := "secrets-test-cntr"
+	resourceTypeName := "Radius.Security/secrets"
+	options := rp.NewRPTestOptions(t)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+
+	test := rp.NewRPTest(t, appName, []rp.TestStep{
+		{
+			// Verify that Radius.Security/secrets resource type is registered by default
+			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
+				output, err := cli.RunCommand(ctx, []string{"resource-type", "show", resourceTypeName, "--output", "json"})
+				require.NoError(t, err)
+				require.Contains(t, output, resourceTypeName)
+			}),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   true,
+		},
+		{
+			// Deploy the secret and container
+			Executor: step.NewDeployExecutor(template, func(values map[string]any) error {
+				values["secretValue"] = "my-test-secret-value"
+				return nil
+			}),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: "secrets-test-env",
+						Type: validation.EnvironmentsResource,
+					},
+					{
+						Name: appName,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: containerName,
+						Type: validation.ContainersResource,
+					},
+					{
+						Name: "test-secret",
+						Type: resourceTypeName,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sPodForResource(appName, containerName).ValidateLabels(false),
+					},
+				},
+			},
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				// Verify environment variable in the container references the secret
+				deploy, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).Get(ctx, containerName, metav1.GetOptions{})
+				require.NoError(t, err)
+
+				var targetContainer *corev1.Container
+				for i := range deploy.Spec.Template.Spec.Containers {
+					container := &deploy.Spec.Template.Spec.Containers[i]
+					if container.Name == containerName {
+						targetContainer = container
+						break
+					}
+				}
+				require.NotNil(t, targetContainer, "Container not found")
+
+				found := false
+				for _, env := range targetContainer.Env {
+					if env.Name == "SECRET_VALUE" {
+						require.NotNil(t, env.ValueFrom)
+						require.NotNil(t, env.ValueFrom.SecretKeyRef)
+						found = true
+						break
+					}
+				}
+				require.True(t, found, "Environment variable SECRET_VALUE not found")
+			},
+		},
+	})
+
+	test.Test(t)
+}
+
