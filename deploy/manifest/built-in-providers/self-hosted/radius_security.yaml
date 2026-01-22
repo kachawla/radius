@@ -27,7 +27,7 @@ types:
 
       1. To use the Secret as an environment variable:
 
-        resource myContainer 'Radius.Compute/containers@2025-08-01-preview' = {
+        resource myContainer 'Applications.Core/containers@2023-10-01-preview' = {
           name: 'myContainer'
           properties: {
             ...
@@ -49,7 +49,7 @@ types:
 
       2. To mount the secret as a volume:
 
-        resource myContainer 'Radius.Compute/containers@2025-08-01-preview' = {
+        resource myContainer 'Applications.Core/containers@2023-10-01-preview' = {
           name: 'myContainer'
           properties: {
             ...
@@ -66,7 +66,7 @@ types:
           }
         }
 
-      Secrets may already existing in the Radius Resource Group. These can be referenced by name using the `existing` Bicep keyword. For example:
+      Secrets may already exist in the Radius Resource Group. These can be referenced by name using the `existing` Bicep keyword. For example:
 
         resource existingSecret 'Radius.Security/secrets@2025-08-01-preview' existing = {
           name: 'existingSecret'
