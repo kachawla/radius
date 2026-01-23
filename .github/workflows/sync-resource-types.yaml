@@ -36,7 +36,7 @@ jobs:
       - name: Run sync script
         id: sync
         run: |
-          ./hack/sync-resource-types.sh
+          ./.github/scripts/sync-resource-types.sh
           
           if git diff --quiet deploy/manifest/built-in-providers/; then
             echo "changes=false" >> $GITHUB_OUTPUT

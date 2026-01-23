@@ -12,7 +12,7 @@ See `.radius-sync-config.yaml.example` in this repository for the expected forma
 
 ### Sync Script
 
-The `hack/sync-resource-types.sh` script:
+The `.github/scripts/sync-resource-types.sh` script:
 1. Fetches the configuration file from resource-types-contrib repository
 2. Reads the list of resource types marked for default registration
 3. Fetches each resource type YAML from resource-types-contrib
@@ -35,10 +35,10 @@ To manually sync resource types:
 
 ```bash
 # From the repository root
-./hack/sync-resource-types.sh
+./.github/scripts/sync-resource-types.sh
 
 # Override source repository or branch
-./hack/sync-resource-types.sh --source-repo <owner/repo> --source-branch <branch>
+./.github/scripts/sync-resource-types.sh --source-repo <owner/repo> --source-branch <branch>
 ```
 
 ### Adding New Resource Types for Default Registration
