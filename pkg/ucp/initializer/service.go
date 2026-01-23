@@ -80,15 +80,27 @@ func (w *Service) Run(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	manifestDir := w.options.Config.Initialization.ManifestDirectory
-	if manifestDir == "" {
-		logger.Info("No manifest directory specified, initialization is complete")
+	manifestDirs := w.options.Config.Initialization.ManifestDirectories
+
+	// Collect all directories to process
+	var directories []string
+	if manifestDir != "" {
+		directories = append(directories, manifestDir)
+	}
+	directories = append(directories, manifestDirs...)
+
+	if len(directories) == 0 {
+		logger.Info("No manifest directories specified, initialization is complete")
 		return nil
 	}
 
-	if _, err := os.Stat(manifestDir); os.IsNotExist(err) {
-		return fmt.Errorf("manifest directory does not exist: %w", err)
-	} else if err != nil {
-		return fmt.Errorf("error checking manifest directory: %w", err)
+	// Validate all directories exist
+	for _, dir := range directories {
+		if _, err := os.Stat(dir); os.IsNotExist(err) {
+			return fmt.Errorf("manifest directory does not exist: %s: %w", dir, err)
+		} else if err != nil {
+			return fmt.Errorf("error checking manifest directory %s: %w", dir, err)
+		}
 	}
 
 	if w.options.UCP == nil || w.options.UCP.Endpoint() == "" {
@@ -124,11 +136,15 @@ func (w *Service) Run(ctx context.Context) error {
 		logger.Info(fmt.Sprintf(format, args...))
 	}
 
-	if err := manifest.RegisterDirectory(ctx, clientFactory, "local", manifestDir, loggerFunc); err != nil {
-		return fmt.Errorf("error registering manifests : %w", err)
+	// Register manifests from all directories
+	for _, dir := range directories {
+		logger.Info("Registering manifests from directory", "directory", dir)
+		if err := manifest.RegisterDirectory(ctx, clientFactory, "local", dir, loggerFunc); err != nil {
+			return fmt.Errorf("error registering manifests from %s: %w", dir, err)
+		}
 	}
 
-	logger.Info("Successfully registered manifests", "directory", manifestDir)
+	logger.Info("Successfully registered manifests from all directories", "count", len(directories))
 
 	return nil
 }

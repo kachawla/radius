@@ -1,0 +1,106 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: sync-resource-types
+
+on:
+  schedule:
+    # Run weekly on Sundays at 00:00 UTC
+    - cron: "0 0 * * 0"
+  # workflow_dispatch: # Enable during development, commented out for production
+
+permissions:
+  contents: read
+
+jobs:
+  sync-resource-types:
+    # Only run on the main repository, not forks
+    if: github.repository == 'kachawla/radius'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: true
+          fetch-depth: 1
+      
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.40.5/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+          yq --version
+      
+      - name: Run sync script
+        id: sync
+        run: |
+          ./hack/sync-resource-types.sh
+          
+          if git diff --quiet deploy/manifest/default-resource-types/; then
+            echo "changes=false" >> $GITHUB_OUTPUT
+            echo "No changes detected"
+          else
+            echo "changes=true" >> $GITHUB_OUTPUT
+            echo "Changes detected"
+          fi
+      
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if [[ "${{ steps.sync.outputs.changes }}" == "true" ]]; then
+            echo "::notice::Resource type changes detected - will create PR"
+          else
+            echo "::notice::No changes detected - skipping PR creation"
+          fi
+      
+      - name: Create Pull Request
+        if: steps.sync.outputs.changes == 'true'
+        uses: peter-evans/create-pull-request@5e914681df9dc83aa4e4905692ca88beb2f9e91f # v7.0.5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: sync resource types from resource-types-contrib"
+          title: "chore: sync resource types from resource-types-contrib"
+          body: |
+            ## Automated Resource Type Sync
+            
+            This PR updates resource type definitions synced from [resource-types-contrib](https://github.com/radius-project/resource-types-contrib).
+            
+            ### Changes
+            
+            The following resource type YAML files have been updated:
+            
+            - Check the file diff for specific changes
+            
+            ### Review Checklist
+            
+            - [ ] Review the changes to ensure they are expected
+            - [ ] Verify that the resource type schemas are valid
+            - [ ] Check that no breaking changes were introduced
+            
+            ### Auto-merge
+            
+            This PR can be automatically merged if:
+            - All CI checks pass
+            - The changes are non-breaking
+            - A maintainer approves the changes
+            
+            ---
+            
+            *This PR was automatically created by the sync-resource-types workflow*
+          branch: automated/sync-resource-types
+          delete-branch: true
+          labels: |
+            automated
+            resource-types
+          draft: false
+      
+      - name: Summary
+        if: always()
+        run: |
+          if [[ "${{ steps.sync.outputs.changes }}" == "true" ]]; then
+            echo "✅ Resource types synced and PR created"
+          else
+            echo "✅ Resource types are up to date"
+          fi
