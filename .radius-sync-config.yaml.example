@@ -1,32 +1,26 @@
-# Configuration for syncing resource types from resource-types-contrib repository
-# 
-# This file defines which resource types should be automatically synced from the
-# radius-project/resource-types-contrib repository to this repository for default registration.
+# Radius Sync Configuration
+#
+# This file defines which resource types from this repository should be
+# automatically synced to the radius-project/radius repository for default registration.
+#
+# Place this file at the root of the resource-types-contrib repository as:
+# .radius-sync-config.yaml
 #
 # Format:
-#   resourceTypes:
+#   targetDirectories: List of directories in radius repo where files should be copied
+#   resourceTypes: List of resource types to sync
 #     - namespace: <namespace without 'Radius.' prefix>
 #       name: <resource type directory name>
 #       file: <yaml file name>
 #
-# Example:
-#   resourceTypes:
-#     - namespace: Data
-#       name: mySqlDatabases
-#       file: mySqlDatabases.yaml
-#
 
-# Source repository configuration
-sourceRepo: radius-project/resource-types-contrib
-sourceBranch: main
-
-# Target directories for synced resource types (relative to repository root)
-# Resource types will be copied to both dev and self-hosted directories
+# Target directories in the radius repository (relative to repository root)
+# Resource types will be copied to these directories
 targetDirectories:
   - deploy/manifest/built-in-providers/dev
   - deploy/manifest/built-in-providers/self-hosted
 
-# List of resource types to sync
+# List of resource types to sync for default registration
 resourceTypes:
   # Data namespace resource types
   - namespace: Data

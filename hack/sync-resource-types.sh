@@ -4,7 +4,8 @@
 # Sync Resource Types from resource-types-contrib Repository
 # ============================================================================
 # This script syncs resource type YAML files from the resource-types-contrib
-# repository based on the configuration in .github/resource-types-sync-config.yaml
+# repository based on the configuration fetched from .radius-sync-config.yaml
+# in the resource-types-contrib repository
 
 set -euo pipefail
 
@@ -18,20 +19,25 @@ trap cleanup EXIT
 
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-readonly DEFAULT_CONFIG_FILE="${REPO_ROOT}/.github/resource-types-sync-config.yaml"
+readonly DEFAULT_SOURCE_REPO="radius-project/resource-types-contrib"
+readonly DEFAULT_SOURCE_BRANCH="main"
+readonly CONFIG_FILE_NAME=".radius-sync-config.yaml"
 
 TEMP_DIR=""
 CHANGES_DETECTED=false
-CONFIG_FILE="${DEFAULT_CONFIG_FILE}"
+CONFIG_FILE=""
+SOURCE_REPO="${DEFAULT_SOURCE_REPO}"
+SOURCE_BRANCH="${DEFAULT_SOURCE_BRANCH}"
 
 usage() {
   echo "Usage: $(basename "$0") [OPTIONS]"
   echo "Sync resource types from resource-types-contrib repository"
   echo ""
   echo "Options:"
-  echo "  --dry-run         Show what would be synced without making changes"
-  echo "  --config FILE     Use alternate config file (default: .github/resource-types-sync-config.yaml)"
-  echo "  -h, --help        Show this help message"
+  echo "  --source-repo REPO    Source repository (default: radius-project/resource-types-contrib)"
+  echo "  --source-branch BRANCH Source branch (default: main)"
+  echo "  --dry-run             Show what would be synced without making changes"
+  echo "  -h, --help            Show this help message"
   exit 0
 }
 
@@ -59,21 +65,30 @@ check_dependencies() {
   fi
 }
 
+fetch_config() {
+  log_info "Fetching configuration from ${SOURCE_REPO}@${SOURCE_BRANCH}..."
+  
+  local config_url="https://raw.githubusercontent.com/${SOURCE_REPO}/${SOURCE_BRANCH}/${CONFIG_FILE_NAME}"
+  
+  TEMP_DIR="$(mktemp -d)"
+  CONFIG_FILE="${TEMP_DIR}/${CONFIG_FILE_NAME}"
+  
+  if ! curl -sf "${config_url}" -o "${CONFIG_FILE}"; then
+    log_error "Failed to fetch config file from ${config_url}"
+    log_error "Make sure ${CONFIG_FILE_NAME} exists in the ${SOURCE_REPO} repository"
+    exit 1
+  fi
+  
+  log_info "Configuration file downloaded successfully"
+}
+
 parse_config() {
   if [[ ! -f "${CONFIG_FILE}" ]]; then
     log_error "Config file not found: ${CONFIG_FILE}"
     exit 1
   fi
   
-  SOURCE_REPO=$(yq eval '.sourceRepo' "${CONFIG_FILE}")
-  SOURCE_BRANCH=$(yq eval '.sourceBranch' "${CONFIG_FILE}")
-  
-  if [[ "${SOURCE_REPO}" == "null" || "${SOURCE_BRANCH}" == "null" ]]; then
-    log_error "Invalid config file: missing required fields (sourceRepo, sourceBranch)"
-    exit 1
-  fi
-  
-  # Get target directories as an array
+  # Get target directories - these should be defined in the config from upstream
   TARGET_DIR_COUNT=$(yq eval '.targetDirectories | length' "${CONFIG_FILE}")
   if [[ "${TARGET_DIR_COUNT}" == "0" || "${TARGET_DIR_COUNT}" == "null" ]]; then
     log_error "Invalid config file: no targetDirectories specified"
@@ -193,8 +208,12 @@ main() {
         dry_run=true
         shift
         ;;
-      --config)
-        CONFIG_FILE="$2"
+      --source-repo)
+        SOURCE_REPO="$2"
+        shift 2
+        ;;
+      --source-branch)
+        SOURCE_BRANCH="$2"
         shift 2
         ;;
       -h|--help)
@@ -210,6 +229,7 @@ main() {
   log_info "Starting resource type sync..."
   
   check_dependencies
+  fetch_config
   parse_config
   sync_resource_types
   
