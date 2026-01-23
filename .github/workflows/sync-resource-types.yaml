@@ -38,7 +38,7 @@ jobs:
         run: |
           ./hack/sync-resource-types.sh
           
-          if git diff --quiet deploy/manifest/default-resource-types/; then
+          if git diff --quiet deploy/manifest/built-in-providers/; then
             echo "changes=false" >> $GITHUB_OUTPUT
             echo "No changes detected"
           else
@@ -67,11 +67,7 @@ jobs:
             
             This PR updates resource type definitions synced from [resource-types-contrib](https://github.com/radius-project/resource-types-contrib).
             
-            ### Changes
-            
-            The following resource type YAML files have been updated:
-            
-            - Check the file diff for specific changes
+            Resource types are copied to both `deploy/manifest/built-in-providers/dev` and `deploy/manifest/built-in-providers/self-hosted` directories.
             
             ### Review Checklist
             

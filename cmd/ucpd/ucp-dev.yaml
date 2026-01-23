@@ -54,9 +54,7 @@ initialization:
           Microsoft.Resources: "http://localhost:5017"
         kind: "UCPNative"
   # This is the directory location which contains manifests to be registered.
-  manifestDirectory: "../../deploy/manifest/built-in-providers/dev"
-  manifestDirectories:
-    - "../../deploy/manifest/default-resource-types"     
+  manifestDirectory: "../../deploy/manifest/built-in-providers/dev"     
 
 identity:
   authMethod: default

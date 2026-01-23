@@ -67,31 +67,35 @@ parse_config() {
   
   SOURCE_REPO=$(yq eval '.sourceRepo' "${CONFIG_FILE}")
   SOURCE_BRANCH=$(yq eval '.sourceBranch' "${CONFIG_FILE}")
-  TARGET_DIRECTORY=$(yq eval '.targetDirectory' "${CONFIG_FILE}")
   
-  if [[ "${SOURCE_REPO}" == "null" || "${SOURCE_BRANCH}" == "null" || "${TARGET_DIRECTORY}" == "null" ]]; then
-    log_error "Invalid config file: missing required fields (sourceRepo, sourceBranch, targetDirectory)"
+  if [[ "${SOURCE_REPO}" == "null" || "${SOURCE_BRANCH}" == "null" ]]; then
+    log_error "Invalid config file: missing required fields (sourceRepo, sourceBranch)"
+    exit 1
+  fi
+  
+  # Get target directories as an array
+  TARGET_DIR_COUNT=$(yq eval '.targetDirectories | length' "${CONFIG_FILE}")
+  if [[ "${TARGET_DIR_COUNT}" == "0" || "${TARGET_DIR_COUNT}" == "null" ]]; then
+    log_error "Invalid config file: no targetDirectories specified"
     exit 1
   fi
   
   log_info "Configuration loaded:"
   log_info "  Source: ${SOURCE_REPO}@${SOURCE_BRANCH}"
-  log_info "  Target: ${TARGET_DIRECTORY}"
+  log_info "  Target directories: ${TARGET_DIR_COUNT}"
 }
 
 fetch_resource_type() {
   local namespace="$1"
   local name="$2"
   local file="$3"
-  local target_file="${4:-${file}}"
   
   local source_url="https://raw.githubusercontent.com/${SOURCE_REPO}/${SOURCE_BRANCH}/${namespace}/${name}/${file}"
-  local target_path="${REPO_ROOT}/${TARGET_DIRECTORY}/${target_file}"
   
   log_info "Fetching ${namespace}/${name}/${file}..."
   
   TEMP_DIR="$(mktemp -d)"
-  local temp_file="${TEMP_DIR}/${target_file}"
+  local temp_file="${TEMP_DIR}/${file}"
   
   if ! curl -sf "${source_url}" -o "${temp_file}"; then
     log_error "Failed to fetch ${source_url}"
@@ -104,19 +108,36 @@ fetch_resource_type() {
     return 1
   fi
   
-  # Check if file has changed
-  if [[ -f "${target_path}" ]]; then
-    if diff -q "${temp_file}" "${target_path}" > /dev/null 2>&1; then
-      log_info "  No changes detected"
+  # Get target directories count
+  local target_dir_count
+  target_dir_count=$(yq eval '.targetDirectories | length' "${CONFIG_FILE}")
+  
+  local changed=false
+  
+  # Copy to each target directory
+  for ((j=0; j<target_dir_count; j++)); do
+    local target_dir
+    target_dir=$(yq eval ".targetDirectories[$j]" "${CONFIG_FILE}")
+    local target_path="${REPO_ROOT}/${target_dir}/${file}"
+    
+    # Check if file has changed
+    if [[ -f "${target_path}" ]]; then
+      if diff -q "${temp_file}" "${target_path}" > /dev/null 2>&1; then
+        log_info "  ${target_dir}/${file}: No changes"
+      else
+        log_info "  ${target_dir}/${file}: Changes detected - updating"
+        cp "${temp_file}" "${target_path}"
+        changed=true
+      fi
     else
-      log_info "  Changes detected - updating file"
+      log_info "  ${target_dir}/${file}: New file - creating"
+      mkdir -p "$(dirname "${target_path}")"
       cp "${temp_file}" "${target_path}"
-      CHANGES_DETECTED=true
+      changed=true
     fi
-  else
-    log_info "  New file - creating"
-    mkdir -p "$(dirname "${target_path}")"
-    cp "${temp_file}" "${target_path}"
+  done
+  
+  if [[ "${changed}" == "true" ]]; then
     CHANGES_DETECTED=true
   fi
   
@@ -145,13 +166,8 @@ sync_resource_types() {
     namespace=$(yq eval ".resourceTypes[$i].namespace" "${CONFIG_FILE}")
     name=$(yq eval ".resourceTypes[$i].name" "${CONFIG_FILE}")
     file=$(yq eval ".resourceTypes[$i].file" "${CONFIG_FILE}")
-    target_file=$(yq eval ".resourceTypes[$i].targetFile" "${CONFIG_FILE}")
     
-    if [[ "${target_file}" == "null" ]]; then
-      target_file="${file}"
-    fi
-    
-    fetch_resource_type "${namespace}" "${name}" "${file}" "${target_file}" || {
+    fetch_resource_type "${namespace}" "${name}" "${file}" || {
       log_error "Failed to sync ${namespace}/${name}"
       exit 1
     }

@@ -52,8 +52,6 @@ data:
           properties:
             kind: "AWS"
       manifestDirectory: "/manifest/built-in-providers"
-      manifestDirectories:
-        - "/manifest/default-resource-types"
 
     identity:
       authMethod: UCPCredential

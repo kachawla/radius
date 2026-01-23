@@ -40,8 +40,6 @@ initialization:
       properties:
         kind: "Azure"
   manifestDirectory: "deploy/manifest/built-in-providers/dev"
-  manifestDirectories:
-    - "deploy/manifest/default-resource-types"
 
 identity:
   authMethod: default

@@ -132,12 +132,6 @@ copy-manifests:
 	@mkdir -p $(OUT_DIR)/manifest/built-in-providers/
 	@echo "Copying manifests from $(MANIFEST_DIR) to $(OUT_DIR)/manifest/built-in-providers/"
 	@cp -v $(MANIFEST_DIR)/* $(OUT_DIR)/manifest/built-in-providers/
-	@# Copy default resource types if directory exists
-	@if [ -d "deploy/manifest/default-resource-types" ]; then \
-		mkdir -p $(OUT_DIR)/manifest/default-resource-types/; \
-		echo "Copying default resource types to $(OUT_DIR)/manifest/default-resource-types/"; \
-		cp -v deploy/manifest/default-resource-types/*.yaml $(OUT_DIR)/manifest/default-resource-types/ 2>/dev/null || echo "No YAML files to copy in default-resource-types"; \
-	fi
 
 # Function to extract the name and the directory of the Dockerfile from the app string
 define parseApp

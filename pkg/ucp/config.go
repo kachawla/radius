@@ -111,10 +111,6 @@ type InitializationConfig struct {
 
 	// ManifestDirectory is the directory which contains manifests.
 	ManifestDirectory string `yaml:"manifestDirectory"`
-
-	// ManifestDirectories is a list of directories which contain manifests.
-	// If both ManifestDirectory and ManifestDirectories are specified, both will be processed.
-	ManifestDirectories []string `yaml:"manifestDirectories,omitempty"`
 }
 
 // Plane is a configuration entry for a plane resource. This is used to create a plane resource at startup.

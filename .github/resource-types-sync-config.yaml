@@ -8,7 +8,6 @@
 #     - namespace: <namespace without 'Radius.' prefix>
 #       name: <resource type directory name>
 #       file: <yaml file name>
-#       targetFile: <optional: target filename, defaults to <name>.yaml>
 #
 # Example:
 #   resourceTypes:
@@ -21,8 +20,11 @@
 sourceRepo: radius-project/resource-types-contrib
 sourceBranch: main
 
-# Target directory for synced resource types (relative to repository root)
-targetDirectory: deploy/manifest/default-resource-types
+# Target directories for synced resource types (relative to repository root)
+# Resource types will be copied to both dev and self-hosted directories
+targetDirectories:
+  - deploy/manifest/built-in-providers/dev
+  - deploy/manifest/built-in-providers/self-hosted
 
 # List of resource types to sync
 resourceTypes:
