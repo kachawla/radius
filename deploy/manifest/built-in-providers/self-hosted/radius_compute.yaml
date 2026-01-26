@@ -1,0 +1,77 @@
+namespace: Radius.Compute
+location:
+  global:
+    "http://dynamic-rp.radius-system:8082"
+types:
+  containers:
+    apiVersions:
+      "2025-08-01-preview":
+        schema:
+          type: object
+          properties:
+            environment:
+              type: string
+            application:
+              type: string
+            connections:
+              type: object
+              additionalProperties:
+                type: object
+                properties:
+                  source:
+                    type: string
+                  disableDefaultEnvVars:
+                    type: boolean
+                required: [source]
+            containers:
+              type: object
+              additionalProperties:
+                type: object
+                properties:
+                  initContainer:
+                    type: boolean
+                  image:
+                    type: string
+                  command:
+                    type: array
+                    items:
+                      type: string
+                  args:
+                    type: array
+                    items:
+                      type: string
+                  env:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        value:
+                          type: string
+                        valueFrom:
+                          type: object
+                  workingDir:
+                    type: string
+                  resources:
+                    type: object
+                  ports:
+                    type: object
+                  volumeMounts:
+                    type: array
+                  readinessProbe:
+                    type: object
+                  livenessProbe:
+                    type: object
+                required: [image]
+            volumes:
+              type: object
+            restartPolicy:
+              type: string
+            replicas:
+              type: integer
+            autoScaling:
+              type: object
+            extensions:
+              type: object
+            platformOptions:
+              type: object
+          required: [environment, application, containers]
