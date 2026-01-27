@@ -114,7 +114,7 @@ func GetDeprecatedResources(template map[string]any) []string {
 		// Check if the resource type uses the deprecated Applications.* namespace with 2023-10-01-preview API version
 		resourceTypeLower := strings.ToLower(resourceType)
 		if strings.HasPrefix(resourceTypeLower, deprecatedNamespacePrefix) &&
-			strings.Contains(resourceTypeLower, "@"+deprecatedAPIVersion) {
+			strings.HasSuffix(resourceTypeLower, "@"+deprecatedAPIVersion) {
 			deprecatedResources = append(deprecatedResources, resourceType)
 		}
 	}

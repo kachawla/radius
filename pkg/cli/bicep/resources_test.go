@@ -325,6 +325,18 @@ func Test_GetDeprecatedResources(t *testing.T) {
 			expected: []string{},
 		},
 		{
+			name: "Template with Applications resource and similar but different API version suffix",
+			template: map[string]any{
+				"resources": map[string]any{
+					"container": map[string]any{
+						"type": "Applications.Core/containers@2023-10-01-preview-v2",
+						"name": "my-container",
+					},
+				},
+			},
+			expected: []string{},
+		},
+		{
 			name: "Template with invalid resources format (array instead of map)",
 			template: map[string]any{
 				"resources": []any{
