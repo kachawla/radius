@@ -192,6 +192,9 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	if bicep.ContainsLegacyApplicationsAPIVersion(r.Template) {
+		r.Output.LogInfo("Warning: Applications.* resources with apiVersion %q are deprecated. Update to the latest apiVersion.", bicep.LegacyApplicationsAPIVersion)
+	}
 
 	// Check if environment was explicitly provided via flag or workspace default
 	environmentFlag, _ := cmd.Flags().GetString("environment")
