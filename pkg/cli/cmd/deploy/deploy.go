@@ -259,6 +259,18 @@ func (r *Runner) Run(ctx context.Context) error {
 	// Use the template that was prepared during validation
 	template := r.Template
 
+	// Check for deprecated resource types and warn the user
+	deprecatedResources := bicep.GetDeprecatedResources(template)
+	if len(deprecatedResources) > 0 {
+		r.Output.LogInfo("")
+		r.Output.LogInfo("WARNING: The following resource types are deprecated and will be removed in a future release:")
+		for _, resourceType := range deprecatedResources {
+			r.Output.LogInfo("  - %s", resourceType)
+		}
+		r.Output.LogInfo("Please migrate to the new Radius.* namespace. See https://docs.radapp.io/guides/operations/migration/ for more information.")
+		r.Output.LogInfo("")
+	}
+
 	// This is the earliest point where we can inject parameters, we have
 	// to wait until the template is prepared.
 	err := r.injectAutomaticParameters(template)

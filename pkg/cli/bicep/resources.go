@@ -26,6 +26,12 @@ const (
 
 	// legacyEnvironmentResourceType is the legacy resource type for Radius environments
 	legacyEnvironmentResourceType = "applications.core/environments"
+
+	// deprecatedNamespacePrefix is the deprecated namespace prefix for Radius resource types
+	deprecatedNamespacePrefix = "applications."
+
+	// deprecatedAPIVersion is the deprecated API version for old Radius resource types
+	deprecatedAPIVersion = "2023-10-01-preview"
 )
 
 // ContainsEnvironmentResource inspects the compiled Radius Bicep template's resources to determine if an
@@ -69,4 +75,49 @@ func ContainsEnvironmentResource(template map[string]any) bool {
 	}
 
 	return false
+}
+
+// GetDeprecatedResources inspects the compiled Radius Bicep template's resources to find any resources
+// using the deprecated Applications.* namespace with the 2023-10-01-preview API version.
+//
+// The expected structure of resource in the template is:
+// {"resources": {"resourceName": {"type": "Applications.Core/containers@2023-10-01-preview", ...}}}
+//
+// Returns a slice of resource type strings that are using the deprecated namespace/API version combination.
+func GetDeprecatedResources(template map[string]any) []string {
+	if template == nil {
+		return nil
+	}
+
+	resourcesValue, ok := template["resources"]
+	if !ok {
+		return nil
+	}
+
+	resources, ok := resourcesValue.(map[string]any)
+	if !ok {
+		return nil
+	}
+
+	deprecatedResources := []string{}
+	for _, resourceValue := range resources {
+		resource, ok := resourceValue.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		resourceType, ok := resource["type"].(string)
+		if !ok {
+			continue
+		}
+
+		// Check if the resource type uses the deprecated Applications.* namespace with 2023-10-01-preview API version
+		resourceTypeLower := strings.ToLower(resourceType)
+		if strings.HasPrefix(resourceTypeLower, deprecatedNamespacePrefix) &&
+			strings.Contains(resourceTypeLower, "@"+deprecatedAPIVersion) {
+			deprecatedResources = append(deprecatedResources, resourceType)
+		}
+	}
+
+	return deprecatedResources
 }
