@@ -205,3 +205,62 @@ func Test_ContainsEnvironmentResource(t *testing.T) {
 		})
 	}
 }
+
+func Test_ContainsLegacyApplicationsAPIVersion(t *testing.T) {
+	tests := []struct {
+		name     string
+		template map[string]any
+		expected bool
+	}{
+		{
+			name:     "Nil template",
+			template: nil,
+			expected: false,
+		},
+		{
+			name:     "Empty template",
+			template: map[string]any{},
+			expected: false,
+		},
+		{
+			name: "Template with Applications resource and deprecated API version",
+			template: map[string]any{
+				"resources": map[string]any{
+					"app": map[string]any{
+						"type": "Applications.Core/applications@2023-10-01-preview",
+					},
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "Template with Applications resource and newer API version",
+			template: map[string]any{
+				"resources": map[string]any{
+					"app": map[string]any{
+						"type": "Applications.Core/applications@2025-08-01-preview",
+					},
+				},
+			},
+			expected: false,
+		},
+		{
+			name: "Template with non-Applications resource",
+			template: map[string]any{
+				"resources": map[string]any{
+					"env": map[string]any{
+						"type": "Radius.Core/environments@2023-10-01-preview",
+					},
+				},
+			},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ContainsLegacyApplicationsAPIVersion(tt.template)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}

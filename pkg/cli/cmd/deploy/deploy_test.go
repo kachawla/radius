@@ -314,6 +314,36 @@ func Test_Validate(t *testing.T) {
 					Times(1)
 			},
 		},
+		{
+			Name:          "rad deploy - logs warning for deprecated Applications API version",
+			Input:         []string{"app.bicep", "--group", "test-group"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         radcli.LoadEmptyConfig(t),
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				templateWithLegacyApp := map[string]any{
+					"resources": map[string]any{
+						"app": map[string]any{
+							"type": "Applications.Core/applications@2023-10-01-preview",
+						},
+					},
+				}
+				mocks.Bicep.EXPECT().
+					PrepareTemplate("app.bicep").
+					Return(templateWithLegacyApp, nil).
+					Times(1)
+			},
+			ValidateCallback: func(t *testing.T, obj framework.Runner) {
+				runner := obj.(*Runner)
+				outputSink := runner.Output.(*output.MockOutput)
+				require.Contains(t, outputSink.Writes, output.LogOutput{
+					Format: "Warning: Applications.* resources with apiVersion %q are deprecated. Update to the latest apiVersion.",
+					Params: []any{bicep.LegacyApplicationsAPIVersion},
+				})
+			},
+		},
 	}
 
 	radcli.SharedValidateValidation(t, NewCommand, testcases)

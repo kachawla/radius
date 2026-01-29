@@ -26,6 +26,14 @@ const (
 
 	// legacyEnvironmentResourceType is the legacy resource type for Radius environments
 	legacyEnvironmentResourceType = "applications.core/environments"
+
+	// legacyApplicationsResourcePrefix is the legacy Applications resource type prefix.
+	legacyApplicationsResourcePrefix = "applications."
+
+	// LegacyApplicationsAPIVersion is the deprecated Applications API version.
+	LegacyApplicationsAPIVersion = "2023-10-01-preview"
+
+	legacyApplicationsAPIVersionSuffix = "@" + LegacyApplicationsAPIVersion
 )
 
 // ContainsEnvironmentResource inspects the compiled Radius Bicep template's resources to determine if an
@@ -34,17 +42,8 @@ const (
 // The expected structure of resource in the template is:
 // {"resources": {"resourceName": {"type": "Applications.Core/environments@2023-10-01-preview", ...}}}
 func ContainsEnvironmentResource(template map[string]any) bool {
-	if template == nil {
-		return false
-	}
-
-	resourcesValue, ok := template["resources"]
-	if !ok {
-		return false
-	}
-
-	resources, ok := resourcesValue.(map[string]any)
-	if !ok {
+	resources := extractResourcesMap(template)
+	if resources == nil {
 		return false
 	}
 
@@ -69,4 +68,54 @@ func ContainsEnvironmentResource(template map[string]any) bool {
 	}
 
 	return false
+}
+
+// ContainsLegacyApplicationsAPIVersion checks if the template contains legacy Applications.* resources
+// using the deprecated 2023-10-01-preview API version.
+func ContainsLegacyApplicationsAPIVersion(template map[string]any) bool {
+	resources := extractResourcesMap(template)
+	if resources == nil {
+		return false
+	}
+
+	for _, resourceValue := range resources {
+		resource, ok := resourceValue.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		resourceType, ok := resource["type"].(string)
+		if !ok {
+			continue
+		}
+
+		resourceTypeLower := strings.ToLower(resourceType)
+		if !strings.HasPrefix(resourceTypeLower, legacyApplicationsResourcePrefix) {
+			continue
+		}
+
+		if strings.HasSuffix(resourceTypeLower, legacyApplicationsAPIVersionSuffix) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func extractResourcesMap(template map[string]any) map[string]any {
+	if template == nil {
+		return nil
+	}
+
+	resourcesValue, ok := template["resources"]
+	if !ok {
+		return nil
+	}
+
+	resources, ok := resourcesValue.(map[string]any)
+	if !ok {
+		return nil
+	}
+
+	return resources
 }
