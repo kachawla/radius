@@ -322,20 +322,67 @@ async function buildTypeIndex(
     return path.basename(filePath) === "types.json";
   });
 
-  const typeFiles: TypeFile[] = [];
+  const allTypeFiles: TypeFile[] = [];
+  const applicationsTypeFiles: TypeFile[] = [];
+  const radiusTypeFiles: TypeFile[] = [];
+
   for (const typePath of typesPaths) {
     const content = await readFile(typePath, { encoding: "utf8" });
-    typeFiles.push({
+    const typeFile = {
       relativePath: path.relative(baseDir, typePath),
       types: readTypesJson(content),
-    });
+    };
+    
+    allTypeFiles.push(typeFile);
+    
+    // Separate Applications.* and Radius.* types
+    if (typePath.includes('/applications/')) {
+      applicationsTypeFiles.push(typeFile);
+    } else if (typePath.includes('/radius/')) {
+      radiusTypeFiles.push(typeFile);
+    }
   }
-  const indexContent = await buildIndex(
-    typeFiles,
+
+  // Build main index with all types (for backward compatibility)
+  const allIndexContent = await buildIndex(
+    allTypeFiles,
     (log) => logOut(logger, log),
     { name: "Radius", version: version, isSingleton: false } as TypeSettings,
   );
 
-  await writeFile(`${baseDir}/index.json`, writeIndexJson(indexContent));
-  await writeFile(`${baseDir}/index.md`, writeIndexMarkdown(indexContent));
+  await writeFile(`${baseDir}/index.json`, writeIndexJson(allIndexContent));
+  await writeFile(`${baseDir}/index.md`, writeIndexMarkdown(allIndexContent));
+
+  // Build deprecated Applications index
+  if (applicationsTypeFiles.length > 0) {
+    const applicationsIndexContent = await buildIndex(
+      applicationsTypeFiles,
+      (log) => logOut(logger, log),
+      { 
+        name: "Applications", 
+        version: version, 
+        isSingleton: false,
+        isDeprecated: true 
+      } as TypeSettings,
+    );
+
+    await writeFile(`${baseDir}/applications-index.json`, writeIndexJson(applicationsIndexContent));
+    await writeFile(`${baseDir}/applications-index.md`, writeIndexMarkdown(applicationsIndexContent));
+  }
+
+  // Build current Radius index (without deprecated types)
+  if (radiusTypeFiles.length > 0) {
+    const radiusIndexContent = await buildIndex(
+      radiusTypeFiles,
+      (log) => logOut(logger, log),
+      { 
+        name: "Radius", 
+        version: version, 
+        isSingleton: false 
+      } as TypeSettings,
+    );
+
+    await writeFile(`${baseDir}/radius-index.json`, writeIndexJson(radiusIndexContent));
+    await writeFile(`${baseDir}/radius-index.md`, writeIndexMarkdown(radiusIndexContent));
+  }
 }

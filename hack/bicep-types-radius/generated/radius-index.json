@@ -1,0 +1,20 @@
+{
+  "resources": {
+    "Radius.Core/applications@2025-08-01-preview": {
+      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/44"
+    },
+    "Radius.Core/environments@2025-08-01-preview": {
+      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/67"
+    },
+    "Radius.Core/recipePacks@2025-08-01-preview": {
+      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/89"
+    }
+  },
+  "resourceFunctions": {},
+  "namespaceFunctions": [],
+  "settings": {
+    "name": "Radius",
+    "version": "latest",
+    "isSingleton": false
+  }
+}
