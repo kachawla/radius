@@ -420,6 +420,7 @@ jobs:
         if: github.repository == 'radius-project/radius' && ((startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'))
         run: |
           bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.BICEP_TYPES_REGISTRY }}/radius:${{ env.REL_CHANNEL == 'edge' && 'latest' || env.REL_CHANNEL }} --force
+          bicep publish-extension ./hack/bicep-types-radius/generated/applications-index.json --target br:${{ env.BICEP_TYPES_REGISTRY }}/applications:${{ env.REL_CHANNEL == 'edge' && 'latest' || env.REL_CHANNEL }} --force
 
   publish-release:
     name: Publish GitHub Release
