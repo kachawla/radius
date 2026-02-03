@@ -905,7 +905,7 @@ func Test_Run(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		bicep := bicep.NewMockInterface(ctrl)
+		bicepMock := bicep.NewMockInterface(ctrl)
 
 		deployMock := deploy.NewMockInterface(ctrl)
 		deployMock.EXPECT().
@@ -931,7 +931,7 @@ func Test_Run(t *testing.T) {
 		}
 
 		runner := &Runner{
-			Bicep:               bicep,
+			Bicep:               bicepMock,
 			ConnectionFactory:   &connections.MockFactory{},
 			Deploy:              deployMock,
 			Output:              outputSink,
@@ -940,13 +940,10 @@ func Test_Run(t *testing.T) {
 			EnvironmentNameOrID: radcli.TestEnvironmentID,
 			Parameters:          map[string]map[string]any{},
 			Workspace:           workspace,
-			Template: map[string]any{
-				"resources": map[string]any{
-					"container": map[string]any{
-						"type": "Applications.Core/containers@2023-10-01-preview",
-						"name": "my-container",
-					},
-				},
+			Template:            map[string]any{},
+			TemplateInspectionResult: bicep.TemplateInspectionResult{
+				ContainsEnvironmentResource: false,
+				DeprecatedResources:         []string{"Applications.Core/containers@2023-10-01-preview"},
 			},
 		}
 

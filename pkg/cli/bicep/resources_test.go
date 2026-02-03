@@ -22,6 +22,128 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func Test_InspectTemplateResources(t *testing.T) {
+	tests := []struct {
+		name                            string
+		template                        map[string]any
+		expectedContainsEnvResource     bool
+		expectedDeprecatedResources     []string
+		expectedDeprecatedResourcesNil  bool
+	}{
+		{
+			name:                            "Nil template",
+			template:                        nil,
+			expectedContainsEnvResource:     false,
+			expectedDeprecatedResources:     nil,
+			expectedDeprecatedResourcesNil:  true,
+		},
+		{
+			name:                            "Empty template",
+			template:                        map[string]any{},
+			expectedContainsEnvResource:     false,
+			expectedDeprecatedResources:     nil,
+			expectedDeprecatedResourcesNil:  true,
+		},
+		{
+			name: "Template with missing resources field",
+			template: map[string]any{
+				"parameters": map[string]any{},
+			},
+			expectedContainsEnvResource:     false,
+			expectedDeprecatedResources:     nil,
+			expectedDeprecatedResourcesNil:  true,
+		},
+		{
+			name: "Template with empty resources map",
+			template: map[string]any{
+				"resources": map[string]any{},
+			},
+			expectedContainsEnvResource:     false,
+			expectedDeprecatedResources:     []string{},
+			expectedDeprecatedResourcesNil:  false,
+		},
+		{
+			name: "Template with legacy environment resource",
+			template: map[string]any{
+				"resources": map[string]any{
+					"env": map[string]any{
+						"type": "Applications.Core/environments@2023-10-01-preview",
+						"name": "my-env",
+					},
+				},
+			},
+			expectedContainsEnvResource:     true,
+			expectedDeprecatedResources:     []string{"Applications.Core/environments@2023-10-01-preview"},
+			expectedDeprecatedResourcesNil:  false,
+		},
+		{
+			name: "Template with Radius.Core environment resource (not deprecated)",
+			template: map[string]any{
+				"resources": map[string]any{
+					"env": map[string]any{
+						"type": "Radius.Core/environments@2023-10-01-preview",
+						"name": "my-env",
+					},
+				},
+			},
+			expectedContainsEnvResource:     true,
+			expectedDeprecatedResources:     []string{},
+			expectedDeprecatedResourcesNil:  false,
+		},
+		{
+			name: "Template with multiple resources - mixed deprecated and non-deprecated",
+			template: map[string]any{
+				"resources": map[string]any{
+					"app": map[string]any{
+						"type": "Applications.Core/applications@2023-10-01-preview",
+						"name": "my-app",
+					},
+					"env": map[string]any{
+						"type": "Radius.Core/environments@2023-10-01-preview",
+						"name": "my-env",
+					},
+					"container": map[string]any{
+						"type": "Applications.Core/containers@2023-10-01-preview",
+						"name": "my-container",
+					},
+				},
+			},
+			expectedContainsEnvResource: true,
+			expectedDeprecatedResources: []string{
+				"Applications.Core/applications@2023-10-01-preview",
+				"Applications.Core/containers@2023-10-01-preview",
+			},
+			expectedDeprecatedResourcesNil: false,
+		},
+		{
+			name: "Template with invalid resources format (array instead of map)",
+			template: map[string]any{
+				"resources": []any{
+					map[string]any{
+						"type": "Applications.Core/environments@2023-10-01-preview",
+						"name": "my-env",
+					},
+				},
+			},
+			expectedContainsEnvResource:     false,
+			expectedDeprecatedResources:     nil,
+			expectedDeprecatedResourcesNil:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := InspectTemplateResources(tt.template)
+			require.Equal(t, tt.expectedContainsEnvResource, result.ContainsEnvironmentResource)
+			if tt.expectedDeprecatedResourcesNil {
+				require.Nil(t, result.DeprecatedResources)
+			} else {
+				require.ElementsMatch(t, tt.expectedDeprecatedResources, result.DeprecatedResources)
+			}
+		})
+	}
+}
+
 func Test_ContainsEnvironmentResource(t *testing.T) {
 	tests := []struct {
 		name     string

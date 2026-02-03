@@ -137,14 +137,15 @@ type Runner struct {
 	Deploy                  deploy.Interface
 	Output                  output.Interface
 
-	ApplicationName     string
-	EnvironmentNameOrID string
-	FilePath            string
-	Parameters          map[string]map[string]any
-	Template            map[string]any
-	Workspace           *workspaces.Workspace
-	Providers           *clients.Providers
-	EnvResult           *EnvironmentCheckResult
+	ApplicationName          string
+	EnvironmentNameOrID      string
+	FilePath                 string
+	Parameters               map[string]map[string]any
+	Template                 map[string]any
+	TemplateInspectionResult bicep.TemplateInspectionResult
+	Workspace                *workspaces.Workspace
+	Providers                *clients.Providers
+	EnvResult                *EnvironmentCheckResult
 }
 
 // NewRunner creates a new instance of the `rad deploy` runner.
@@ -193,12 +194,15 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Inspect the template resources once to get both environment check and deprecated resources
+	r.TemplateInspectionResult = bicep.InspectTemplateResources(r.Template)
+
 	// Check if environment was explicitly provided via flag or workspace default
 	environmentFlag, _ := cmd.Flags().GetString("environment")
 	environmentProvidedExplicitly := environmentFlag != "" || workspace.Environment != ""
 
 	// Check if the template contains an environment resource
-	templateCreatesEnvironment := bicep.ContainsEnvironmentResource(r.Template)
+	templateCreatesEnvironment := r.TemplateInspectionResult.ContainsEnvironmentResource
 
 	if !templateCreatesEnvironment || environmentProvidedExplicitly {
 		// Environment is required if:
@@ -259,8 +263,8 @@ func (r *Runner) Run(ctx context.Context) error {
 	// Use the template that was prepared during validation
 	template := r.Template
 
-	// Check for deprecated resource types and warn the user
-	deprecatedResources := bicep.GetDeprecatedResources(template)
+	// Check for deprecated resource types and warn the user (using the result from Validate)
+	deprecatedResources := r.TemplateInspectionResult.DeprecatedResources
 	if len(deprecatedResources) > 0 {
 		r.Output.LogInfo("")
 		r.Output.LogInfo("WARNING: The following resource types are deprecated and will be removed in a future release:")

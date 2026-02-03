@@ -34,26 +34,42 @@ const (
 	deprecatedAPIVersion = "2023-10-01-preview"
 )
 
-// ContainsEnvironmentResource inspects the compiled Radius Bicep template's resources to determine if an
-// environment resource will be created as part of the deployment.
+// TemplateInspectionResult contains the results of inspecting a Bicep template's resources.
+type TemplateInspectionResult struct {
+	// ContainsEnvironmentResource indicates whether the template contains an environment resource.
+	ContainsEnvironmentResource bool
+
+	// DeprecatedResources contains the list of resource types using the deprecated Applications.* namespace
+	// with the 2023-10-01-preview API version.
+	DeprecatedResources []string
+}
+
+// InspectTemplateResources inspects the compiled Radius Bicep template's resources in a single pass
+// to determine if an environment resource is present and to find any deprecated resource types.
 //
 // The expected structure of resource in the template is:
-// {"resources": {"resourceName": {"type": "Applications.Core/environments@2023-10-01-preview", ...}}}
-func ContainsEnvironmentResource(template map[string]any) bool {
+// {"resources": {"resourceName": {"type": "Applications.Core/containers@2023-10-01-preview", ...}}}
+func InspectTemplateResources(template map[string]any) TemplateInspectionResult {
+	result := TemplateInspectionResult{
+		ContainsEnvironmentResource: false,
+		DeprecatedResources:         nil,
+	}
+
 	if template == nil {
-		return false
+		return result
 	}
 
 	resourcesValue, ok := template["resources"]
 	if !ok {
-		return false
+		return result
 	}
 
 	resources, ok := resourcesValue.(map[string]any)
 	if !ok {
-		return false
+		return result
 	}
 
+	result.DeprecatedResources = []string{}
 	for _, resourceValue := range resources {
 		resource, ok := resourceValue.(map[string]any)
 		if !ok {
@@ -65,16 +81,31 @@ func ContainsEnvironmentResource(template map[string]any) bool {
 			continue
 		}
 
-		// Resource types include API version (e.g., "Radius.Core/environments@2023-10-01-preview")
-		// Check if it starts with either resource type (case-insensitive)
 		resourceTypeLower := strings.ToLower(resourceType)
+
+		// Check for environment resource
 		if strings.HasPrefix(resourceTypeLower, environmentResourceType) ||
 			strings.HasPrefix(resourceTypeLower, legacyEnvironmentResourceType) {
-			return true
+			result.ContainsEnvironmentResource = true
+		}
+
+		// Check for deprecated Applications.* namespace with 2023-10-01-preview API version
+		if strings.HasPrefix(resourceTypeLower, deprecatedNamespacePrefix) &&
+			strings.HasSuffix(resourceTypeLower, "@"+deprecatedAPIVersion) {
+			result.DeprecatedResources = append(result.DeprecatedResources, resourceType)
 		}
 	}
 
-	return false
+	return result
+}
+
+// ContainsEnvironmentResource inspects the compiled Radius Bicep template's resources to determine if an
+// environment resource will be created as part of the deployment.
+//
+// The expected structure of resource in the template is:
+// {"resources": {"resourceName": {"type": "Applications.Core/environments@2023-10-01-preview", ...}}}
+func ContainsEnvironmentResource(template map[string]any) bool {
+	return InspectTemplateResources(template).ContainsEnvironmentResource
 }
 
 // GetDeprecatedResources inspects the compiled Radius Bicep template's resources to find any resources
@@ -85,39 +116,5 @@ func ContainsEnvironmentResource(template map[string]any) bool {
 //
 // Returns a slice of resource type strings that are using the deprecated namespace/API version combination.
 func GetDeprecatedResources(template map[string]any) []string {
-	if template == nil {
-		return nil
-	}
-
-	resourcesValue, ok := template["resources"]
-	if !ok {
-		return nil
-	}
-
-	resources, ok := resourcesValue.(map[string]any)
-	if !ok {
-		return nil
-	}
-
-	deprecatedResources := []string{}
-	for _, resourceValue := range resources {
-		resource, ok := resourceValue.(map[string]any)
-		if !ok {
-			continue
-		}
-
-		resourceType, ok := resource["type"].(string)
-		if !ok {
-			continue
-		}
-
-		// Check if the resource type uses the deprecated Applications.* namespace with 2023-10-01-preview API version
-		resourceTypeLower := strings.ToLower(resourceType)
-		if strings.HasPrefix(resourceTypeLower, deprecatedNamespacePrefix) &&
-			strings.HasSuffix(resourceTypeLower, "@"+deprecatedAPIVersion) {
-			deprecatedResources = append(deprecatedResources, resourceType)
-		}
-	}
-
-	return deprecatedResources
+	return InspectTemplateResources(template).DeprecatedResources
 }
