@@ -192,7 +192,8 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if bicep.ContainsLegacyApplicationsAPIVersion(r.Template) {
+	resourceInfo := bicep.AnalyzeTemplateResources(r.Template)
+	if resourceInfo.HasLegacyApplicationsAPIVersion {
 		r.Output.LogInfo("Warning: Applications.* resources with apiVersion %q are deprecated. Update to the latest apiVersion.", bicep.LegacyApplicationsAPIVersion)
 	}
 
@@ -201,7 +202,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	environmentProvidedExplicitly := environmentFlag != "" || workspace.Environment != ""
 
 	// Check if the template contains an environment resource
-	templateCreatesEnvironment := bicep.ContainsEnvironmentResource(r.Template)
+	templateCreatesEnvironment := resourceInfo.HasEnvironmentResource
 
 	if !templateCreatesEnvironment || environmentProvidedExplicitly {
 		// Environment is required if:

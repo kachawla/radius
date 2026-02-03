@@ -36,70 +36,63 @@ const (
 	legacyApplicationsAPIVersionSuffix = "@" + LegacyApplicationsAPIVersion
 )
 
+// TemplateResourceInfo contains metadata about the resource types in a template.
+type TemplateResourceInfo struct {
+	HasEnvironmentResource          bool
+	HasLegacyApplicationsAPIVersion bool
+}
+
+// AnalyzeTemplateResources inspects the compiled Radius Bicep template's resources and returns resource metadata.
+func AnalyzeTemplateResources(template map[string]any) TemplateResourceInfo {
+	info := TemplateResourceInfo{}
+	resources := extractResourcesMap(template)
+	if resources == nil {
+		return info
+	}
+
+	for _, resourceValue := range resources {
+		resource, ok := resourceValue.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		resourceType, ok := resource["type"].(string)
+		if !ok {
+			continue
+		}
+
+		resourceTypeLower := strings.ToLower(resourceType)
+		if strings.HasPrefix(resourceTypeLower, environmentResourceType) ||
+			strings.HasPrefix(resourceTypeLower, legacyEnvironmentResourceType) {
+			info.HasEnvironmentResource = true
+		}
+
+		if strings.HasPrefix(resourceTypeLower, legacyApplicationsResourcePrefix) &&
+			strings.HasSuffix(resourceTypeLower, legacyApplicationsAPIVersionSuffix) {
+			info.HasLegacyApplicationsAPIVersion = true
+		}
+
+		if info.HasEnvironmentResource && info.HasLegacyApplicationsAPIVersion {
+			return info
+		}
+	}
+
+	return info
+}
+
 // ContainsEnvironmentResource inspects the compiled Radius Bicep template's resources to determine if an
 // environment resource will be created as part of the deployment.
 //
 // The expected structure of resource in the template is:
 // {"resources": {"resourceName": {"type": "Applications.Core/environments@2023-10-01-preview", ...}}}
 func ContainsEnvironmentResource(template map[string]any) bool {
-	resources := extractResourcesMap(template)
-	if resources == nil {
-		return false
-	}
-
-	for _, resourceValue := range resources {
-		resource, ok := resourceValue.(map[string]any)
-		if !ok {
-			continue
-		}
-
-		resourceType, ok := resource["type"].(string)
-		if !ok {
-			continue
-		}
-
-		// Resource types include API version (e.g., "Radius.Core/environments@2023-10-01-preview")
-		// Check if it starts with either resource type (case-insensitive)
-		resourceTypeLower := strings.ToLower(resourceType)
-		if strings.HasPrefix(resourceTypeLower, environmentResourceType) ||
-			strings.HasPrefix(resourceTypeLower, legacyEnvironmentResourceType) {
-			return true
-		}
-	}
-
-	return false
+	return AnalyzeTemplateResources(template).HasEnvironmentResource
 }
 
 // ContainsLegacyApplicationsAPIVersion checks if the template contains legacy Applications.* resources
 // using the deprecated 2023-10-01-preview API version.
 func ContainsLegacyApplicationsAPIVersion(template map[string]any) bool {
-	resources := extractResourcesMap(template)
-	if resources == nil {
-		return false
-	}
-
-	for _, resourceValue := range resources {
-		resource, ok := resourceValue.(map[string]any)
-		if !ok {
-			continue
-		}
-
-		resourceType, ok := resource["type"].(string)
-		if !ok {
-			continue
-		}
-
-		resourceTypeLower := strings.ToLower(resourceType)
-		if !strings.HasPrefix(resourceTypeLower, legacyApplicationsResourcePrefix) {
-			continue
-		}
-
-		if strings.HasSuffix(resourceTypeLower, legacyApplicationsAPIVersionSuffix) {
-			return true
-		}
-	}
-
-	return false
+	return AnalyzeTemplateResources(template).HasLegacyApplicationsAPIVersion
 }
 
 func extractResourcesMap(template map[string]any) map[string]any {
