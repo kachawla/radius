@@ -41,6 +41,12 @@ kcp.exe
 docs/.hugo_build.lock
 main
 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
 .vscode/*
 !.vscode/mcp.json
 .DS_Store
