@@ -382,11 +382,44 @@ resourceTypes:      # List of resource types to sync
 
 #### Proposed Option
 
-The implemented design is the proposed option because:
-- It meets all stated goals (automation, author-driven, minimal infrastructure changes)
-- It's simple to understand and maintain
-- It provides safety through manual PR review
-- It's extensible (can add real-time sync, version control, etc. in the future)
+**Option: Custom Bash Script with Pull-Based Sync** (Implemented)
+
+This is the implemented and recommended approach for the following reasons:
+
+**Why this option over alternatives:**
+
+1. **Security**: Uses `GITHUB_TOKEN` instead of requiring a PAT
+   - `GITHUB_TOKEN` has minimal scoped permissions (only to the repo where workflow runs)
+   - No cross-repo write access needed
+   - Reduced attack surface if token is compromised
+
+2. **Maintainability**: Workflow stays in radius repository
+   - Easier for radius maintainers to manage and update
+   - All sync logic visible in radius repo
+   - No dependency on external repositories for workflow changes
+
+3. **Simplicity**: Clean and focused implementation
+   - ~200 lines of well-documented bash
+   - No external action dependencies to track
+   - Easy to understand and debug
+
+4. **Flexibility**: Custom logic for specific requirements
+   - Fetches config from upstream repo (author-driven)
+   - Supports multi-directory sync (dev and self-hosted)
+   - Can add custom validation or transformation logic
+
+5. **Meeting all goals**:
+   - ✅ Automation (weekly schedule)
+   - ✅ Author-driven (config in resource-types-contrib)
+   - ✅ Minimal infrastructure changes (no Radius core changes)
+   - ✅ Change detection (diff-based)
+   - ✅ Safe (manual PR review)
+
+**Comparison with repo-files-sync action** (Alternative 5):
+- Our approach: Pull-based (workflow in radius, pulls from resource-types-contrib)
+- repo-files-sync: Push-based (workflow in resource-types-contrib, pushes to radius)
+- Our approach avoids PAT security concerns
+- Our approach keeps sync management in the consuming repository (radius)
 
 ### API design (if applicable)
 
@@ -735,6 +768,59 @@ Distribute resource types as npm packages or similar package system.
 - Requires changes to Radius loading mechanism
 
 **Rejected because**: Too complex for the use case.
+
+### Alternative 5: Using repo-files-sync GitHub Action
+
+Use the third-party [raven-actions/repo-files-sync](https://github.com/raven-actions/repo-files-sync) GitHub Action to sync files between repositories instead of a custom script.
+
+**How it would work**:
+- Workflow runs IN resource-types-contrib repository (push-based)
+- Uses `sync.yml` config in resource-types-contrib to specify which files to push
+- Pushes resource type files TO radius repository
+- Creates PRs in radius repository
+- Uses Personal Access Token (PAT) for cross-repo access
+
+**Example configuration** (`.github/sync.yml` in resource-types-contrib):
+```yaml
+kachawla/radius@main:
+  - source: Data/mySqlDatabases/mySqlDatabases.yaml
+    dest: deploy/manifest/built-in-providers/dev/mySqlDatabases.yaml
+  - source: Data/mySqlDatabases/mySqlDatabases.yaml
+    dest: deploy/manifest/built-in-providers/self-hosted/mySqlDatabases.yaml
+  # ... repeat for each resource type and target directory
+```
+
+**Advantages**:
+- Maintained third-party action (no custom code to maintain)
+- Rich feature set (templating, glob patterns, auto-merge labels, multiple repo support)
+- Well-tested and widely used
+- Built-in support for fork-based workflows
+- Automatic PR description and labeling
+- Commit each file separately option
+
+**Disadvantages**:
+- **Security concern**: Requires PAT with `repo` scope (write access to radius repository)
+  - PAT is a broader permission than `GITHUB_TOKEN` which only has access to the repo where workflow runs
+  - Risk if PAT is compromised
+- **Workflow location**: Must run in resource-types-contrib, not radius
+  - Harder for radius maintainers to manage and troubleshoot
+  - Changes to sync logic require PRs to resource-types-contrib
+- **Configuration verbosity**: Must list each file and destination explicitly
+  - For 5 resource types x 2 target directories = 10 entries
+  - Becomes unwieldy with many resource types
+- **Less flexibility**: Can't fetch external config or implement custom logic
+  - Our use case (fetching config from upstream) not directly supported
+  - Limited to syncing files from the repo where workflow runs
+- **Dependency management**: Relies on third-party action maintenance
+  - Need to track updates and security patches
+  - Action could become unmaintained
+
+**Rejected because**: 
+- Security concern with PAT requirement (broader permissions than needed)
+- Workflow location in resource-types-contrib makes it harder for radius maintainers to manage
+- Configuration becomes verbose with many resource types
+- Our custom script is only ~200 lines and provides exactly what we need without external dependencies
+- Our pull-based approach (running in radius, pulling from resource-types-contrib) better aligns with the maintainer workflow
 
 ## Design Review Notes
 
