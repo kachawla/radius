@@ -1,0 +1,11 @@
+defaultRegistration: false
+namespace: Test.WithoutDefault
+types:
+  anotherResource:
+    apiVersions:
+      "2023-10-01-preview":
+        schema:
+          type: object
+          properties:
+            value:
+              type: string

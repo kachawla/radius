@@ -1,0 +1,10 @@
+namespace: Test.Existing
+types:
+  existingResource:
+    apiVersions:
+      "2023-10-01-preview":
+        schema:
+          type: object
+          properties:
+            id:
+              type: string

@@ -26,6 +26,11 @@ type ResourceProvider struct {
 
 	// Types is a map of resource types in the resource provider.
 	Types map[string]*ResourceType `yaml:"types" validate:"dive,keys,resourceType,endkeys,required"`
+
+	// DefaultRegistration indicates whether this resource provider should be registered by default in Radius.
+	// This field is used by the sync mechanism to identify manifests that should be automatically copied
+	// from resource-types-contrib to the Radius built-in-providers directory.
+	DefaultRegistration bool `yaml:"defaultRegistration,omitempty"`
 }
 
 // ResourceType represents a resource type in a resource provider manifest.
