@@ -1,0 +1,6 @@
+# Auto-synced resource types from resource-types-contrib
+# Files with synced_ prefix are managed by the sync workflow
+# and should not be manually edited or committed
+
+synced_*.yaml
+synced_*.yml
