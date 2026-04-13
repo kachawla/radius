@@ -15,7 +15,7 @@ Use this skill to generate a Radius application definition (`app.bicep`) from a 
 ## Workflow
 
 1. Analyze the source repository (package manifest, Dockerfile/compose, entry point, persistence layer, env vars).
-2. Classify into exactly one architecture pattern. Read [architecture-patterns](https://raw.githubusercontent.com/radius-project/radius/main/skills/app-modeling/references/architecture-patterns.md).
+2. Classify into exactly one architecture pattern. Read [architecture-patterns](https://raw.githubusercontent.com/kachawla/radius/gh-demo/skills/app-modeling/references/architecture-patterns.md).
 3. Resolve resource types from `radius-project/resource-types-contrib` — MUST match existing schemas before generating new ones. Read only the relevant schema references below.
 4. Generate `.radius/app.bicep` following the structure and composition rules.
 5. Validate against the checklist before outputting.
@@ -26,11 +26,11 @@ For each infrastructure need identified in the source repo, search `radius-proje
 
 | Need | Resource Type | Schema Reference |
 |---|---|---|
-| Containers | `Radius.Compute/containers` | [containers-schema](https://raw.githubusercontent.com/radius-project/radius/main/skills/app-modeling/references/containers-schema.md) |
-| MySQL | `Radius.Data/mySqlDatabases` | [mysql-schema](https://raw.githubusercontent.com/radius-project/radius/main/skills/app-modeling/references/mysql-schema.md) |
-| Persistent storage | `Radius.Compute/persistentVolumes` | [persistent-volumes-schema](https://raw.githubusercontent.com/radius-project/radius/main/skills/app-modeling/references/persistent-volumes-schema.md) |
-| External ingress | `Radius.Compute/routes` | [routes-schema](https://raw.githubusercontent.com/radius-project/radius/main/skills/app-modeling/references/routes-schema.md) |
-| Secrets | `Radius.Security/secrets` | [secrets-schema](https://raw.githubusercontent.com/radius-project/radius/main/skills/app-modeling/references/secrets-schema.md) |
+| Containers | `Radius.Compute/containers` | [containers-schema](https://raw.githubusercontent.com/kachawla/radius/gh-demo/skills/app-modeling/references/containers-schema.md) |
+| MySQL | `Radius.Data/mySqlDatabases` | [mysql-schema](https://raw.githubusercontent.com/kachawla/radius/gh-demo/skills/app-modeling/references/mysql-schema.md) |
+| Persistent storage | `Radius.Compute/persistentVolumes` | [persistent-volumes-schema](https://raw.githubusercontent.com/kachawla/radius/gh-demo/skills/app-modeling/references/persistent-volumes-schema.md) |
+| External ingress | `Radius.Compute/routes` | [routes-schema](https://raw.githubusercontent.com/kachawla/radius/gh-demo/skills/app-modeling/references/routes-schema.md) |
+| Secrets | `Radius.Security/secrets` | [secrets-schema](https://raw.githubusercontent.com/kachawla/radius/gh-demo/skills/app-modeling/references/secrets-schema.md) |
 
 If no matching type exists in `resource-types-contrib`, generate a new schema following the [contribution guidelines](https://raw.githubusercontent.com/radius-project/resource-types-contrib/main/docs/contributing/contributing-resource-types-recipes.md).
 
@@ -62,7 +62,7 @@ Rules:
 Wire containers to infrastructure via `connections`. Auto-injection creates `CONNECTION_<NAME>_<PROPERTY>` env vars for all non-sensitive properties of the connected resource.
 
 References:
-- [connection-auto-injection](https://raw.githubusercontent.com/radius-project/radius/main/skills/app-modeling/references/connection-auto-injection.md)
+- [connection-auto-injection](https://raw.githubusercontent.com/kachawla/radius/gh-demo/skills/app-modeling/references/connection-auto-injection.md)
 
 Rules:
 - NEVER duplicate auto-injected env vars with manual `env` entries.
@@ -76,12 +76,12 @@ Check `radius-project/resource-types-contrib` for existing recipes at `<Category
 ## Naming
 
 References:
-- [naming-conventions](https://raw.githubusercontent.com/radius-project/radius/main/skills/app-modeling/references/naming-conventions.md)
+- [naming-conventions](https://raw.githubusercontent.com/kachawla/radius/gh-demo/skills/app-modeling/references/naming-conventions.md)
 
 ## Secrets
 
 References:
-- [secrets-handling](https://raw.githubusercontent.com/radius-project/radius/main/skills/app-modeling/references/secrets-handling.md)
+- [secrets-handling](https://raw.githubusercontent.com/kachawla/radius/gh-demo/skills/app-modeling/references/secrets-handling.md)
 
 ## Validation Checklist
 
@@ -108,4 +108,4 @@ Before outputting, verify ALL:
 ## Example
 
 References:
-- [todo-list-app-example](https://raw.githubusercontent.com/radius-project/radius/main/skills/app-modeling/references/todo-list-app-example.md)
+- [todo-list-app-example](https://raw.githubusercontent.com/kachawla/radius/gh-demo/skills/app-modeling/references/todo-list-app-example.md)
