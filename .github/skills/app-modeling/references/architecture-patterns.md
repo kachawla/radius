@@ -16,7 +16,7 @@ Classify the application into exactly ONE of these patterns. This determines the
 
 ## Pattern D: Batch Job
 - **Signals**: No HTTP server, runs a task and exits, cron-like behavior
-- **Resources**: `Radius.Compute/containers` with `restartPolicy: OnFailure` or `Never`
+- **Resources**: `Radius.Compute/containers` with `restartPolicy: 'OnFailure'` or `'Never'`
 
 ## Pattern E: Streaming / Real-Time Processing Application
 - **Signals**: WebSocket server (ws, socket.io), stream processing libraries
@@ -24,8 +24,56 @@ Classify the application into exactly ONE of these patterns. This determines the
 
 ## How to classify
 
-1. Check the package manifest for database client libraries → if present, Pattern B
-2. Check for message queue libraries → if present, Pattern C
-3. Check for HTTP server/framework → if present without DB, Pattern A
-4. Check for streaming/WebSocket libraries → if present, Pattern E
-5. If no HTTP server and runs to completion → Pattern D
+1. Check the package manifest for database client libraries → if present, **Pattern B**
+2. Check for message queue libraries → if present, **Pattern C**
+3. Check for HTTP server/framework → if present without DB, **Pattern A**
+4. Check for streaming/WebSocket libraries → if present, **Pattern E**
+5. If no HTTP server and runs to completion → **Pattern D**
+
+## Valid resource composition per pattern
+
+### Pattern B example (most common)
+
+```bicep
+extension radius
+
+param environment string
+
+resource app 'Radius.Core/applications@2025-08-01-preview' = {
+  name: 'my-app'
+  properties: {
+    environment: environment
+  }
+}
+
+resource database 'Radius.Data/mySqlDatabases@2025-08-01-preview' = {
+  name: 'my-database'
+  properties: {
+    environment: environment
+    application: app.id
+  }
+}
+
+resource webContainer 'Radius.Compute/containers@2025-08-01-preview' = {
+  name: 'web'
+  properties: {
+    environment: environment
+    application: app.id
+    containers: {
+      web: {
+        image: 'myapp:latest'
+        ports: {
+          http: {
+            containerPort: 3000
+          }
+        }
+      }
+    }
+    connections: {
+      mysqldb: {
+        source: database.id
+      }
+    }
+  }
+}
+```

@@ -5,7 +5,7 @@
 - **Framework**: Node.js + Express.js
 - **Port**: 3000
 - **Persistence**: Swappable — SQLite (default) or MySQL (when `MYSQL_HOST` is set)
-- **Env vars**: `MYSQL_HOST`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_DB`
+- **Env vars read by app**: `MYSQL_HOST`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_DB`
 - **Compose**: MySQL 8.0 with persistent volume
 - **Pattern**: B — Stateful / Database-Backed Application
 
@@ -16,7 +16,7 @@
 | Node.js container | `Radius.Compute/containers` | Yes |
 | MySQL 8.0 | `Radius.Data/mySqlDatabases` | Yes (with Kubernetes Bicep recipe) |
 
-## Generated `.radius/app.bicep`
+## Correct generated `.radius/app.bicep`
 
 ```bicep
 extension radius
@@ -46,7 +46,7 @@ resource todoContainer 'Radius.Compute/containers@2025-08-01-preview' = {
     application: app.id
     containers: {
       todo: {
-        image: 'node:22-alpine'
+        image: 'ghcr.io/dockersamples/todo-list-app:latest'
         ports: {
           web: {
             containerPort: 3000
@@ -63,12 +63,13 @@ resource todoContainer 'Radius.Compute/containers@2025-08-01-preview' = {
 }
 ```
 
-## Notes
+## Key decisions explained
 
-- The app currently reads `MYSQL_HOST`, but Radius auto-injects `CONNECTION_MYSQLDB_HOST`.
-  The app code at `src/persistence/index.js` should be updated to read `CONNECTION_MYSQLDB_HOST`
-  instead of `MYSQL_HOST` (and similarly for all other DB env vars).
-- MySQL version is set to `8.0` to match the `compose.yaml`.
-- No persistent volume needed — database persistence is handled by the MySQL recipe.
-- No routes resource needed unless external ingress is required.
-- The existing `Data/mySqlDatabases/recipes/kubernetes/bicep/kubernetes-mysql.bicep` recipe is used — no new recipe needed.
+1. **No `version` comment** — `version: '8.0'` matches the compose.yaml. Clean, no explanation needed.
+2. **No routes resource** — not added unless external ingress is explicitly required.
+3. **No persistent volume** — database persistence is handled by the MySQL recipe.
+4. **No explicit `env` mapping** — connection auto-injection handles `CONNECTION_MYSQLDB_*` env vars. The app's `src/persistence/index.js` should be updated to read `CONNECTION_MYSQLDB_HOST` instead of `MYSQL_HOST`.
+5. **`connections` is at top level** — sibling of `containers`, NOT inside it.
+6. **`containerPort: 3000`** — NOT `port: 3000`.
+7. **No readOnly properties set** — `host`, `port`, `password` are output by the recipe.
+8. **No skill-internal comments** — no "do not set readOnly" or "use existing recipe" comments in the output.
