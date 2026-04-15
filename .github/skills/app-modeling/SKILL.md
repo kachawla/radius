@@ -66,7 +66,7 @@ param password string
 @description('The full container image reference to build and push. Must be lowercase.')
 param image string
 
-resource todoApp 'Radius.Core/applications@2025-08-01-preview' = {
+resource todoApp 'Applications.Core/applications@2023-10-01-preview' = {
   name: 'todo-list-app'
   properties: {
     environment: environment
@@ -156,7 +156,11 @@ resource todoContainer 'Radius.Compute/containers@2025-08-01-preview' = {
 }
 ```
 
-Do NOT add any other text, explanations, notes, or commentary before, between, or after the sections above.
+After displaying the output above, immediately create a pull request in the repository adding both files:
+- `.radius/app.bicep` with the Bicep content above
+- `.radius/bicepconfig.json` with the JSON content above
+
+Do NOT ask for confirmation. Do NOT add any other text, explanations, notes, or commentary.
 
 ---
 
@@ -207,9 +211,27 @@ Say: `An application definition has been created for <app-name>.`
 
 Then output the `.radius/app.bicep` and `.radius/bicepconfig.json` code blocks.
 
+### Step 6: Create pull request
+
+After outputting the files, immediately create a pull request in the repository adding:
+- `.radius/app.bicep`
+- `.radius/bicepconfig.json`
+
+Do NOT ask for confirmation before creating the PR.
+
 ## Resource Type Resolution
 
 Read the resource type YAML schema files from the `radius-project/resource-types-contrib` repository. Each resource type has a YAML file at `<Category>/<typeName>/<typeName>.yaml` that defines the exact properties, types, required fields, and readOnly annotations.
+
+### Built-in types (from `radius-project/radius`)
+
+| Need | Resource Type | API Version |
+|---|---|---|
+| Application grouping | `Applications.Core/applications` | `2023-10-01-preview` |
+
+`Applications.Core/applications` is built into Radius. It uses `extension radius` — no additional extension needed. Its API version is `2023-10-01-preview`, NOT `2025-08-01-preview`.
+
+### Extensible types (from `radius-project/resource-types-contrib`)
 
 | Need | Resource Type | Schema file in `resource-types-contrib` |
 |---|---|---|
@@ -230,12 +252,14 @@ Bicep extensions are named by namespace, NOT by individual type:
 
 | Namespace | Extension name | Registry |
 |---|---|---|
-| `Radius.Core` | `radius` | `br:biceptypes.azurecr.io/radius:latest` |
+| `Applications.Core` | `radius` | `br:biceptypes.azurecr.io/radius:latest` |
 | `Radius.Compute` | `radiusCompute` | `br:biceptypes.azurecr.io/radiuscompute:latest` |
 | `Radius.Data` | `radiusData` | `br:biceptypes.azurecr.io/radiusdata:latest` |
 | `Radius.Security` | `radiusSecurity` | `br:biceptypes.azurecr.io/radiussecurity:latest` |
 
 Use `extension radiusCompute` — NOT `extension containerImages` or `extension containers`.
+
+`Applications.Core/applications` is covered by `extension radius` — no separate extension needed.
 
 ## app.bicep Structure (mandatory order)
 
@@ -253,7 +277,7 @@ param password string                 // if database credentials needed
 @description('The full container image reference to build and push. Must be lowercase.')
 param image string                    // if building container images
 
-// 1. Application resource — always exactly one
+// 1. Application resource — always exactly one (Applications.Core/applications@2023-10-01-preview)
 // 2. Data / infrastructure resources (databases, caches)
 // 3. Secret resources (database credentials, API keys)
 // 4. Container image resources (if building from Dockerfile)
@@ -263,7 +287,7 @@ param image string                    // if building container images
 
 Rules:
 - Always start with `extension radius` then namespace-level extensions, then params.
-- Always declare exactly ONE `Radius.Core/applications` resource.
+- Always declare exactly ONE `Applications.Core/applications@2023-10-01-preview` resource. Do NOT use `Radius.Core/applications`.
 - If the app has a Dockerfile but no published image, add a `Radius.Compute/containerImages` resource. Use a `param image string` for the image reference. The container must reference the image via `demoImage.properties.image` and have a connection to `demoImage.id`.
 - For database credentials, create a `Radius.Security/secrets` resource and reference it via `secretName` on the database resource.
 - Use `@secure() param` for passwords — NEVER hardcode them.
@@ -320,15 +344,16 @@ Read [naming-conventions.md](references/naming-conventions.md).
 ## Validation Checklist
 
 Before outputting, verify ALL:
-- [ ] Every resource type matches a YAML schema in `resource-types-contrib` — no invented types
+- [ ] Application resource uses `Applications.Core/applications@2023-10-01-preview` — NOT `Radius.Core/applications`
+- [ ] Every `Radius.*` resource type matches a YAML schema in `resource-types-contrib` — no invented types
 - [ ] Every property used exists in that YAML schema — no invented properties
-- [ ] Every apiVersion is `2025-08-01-preview`
+- [ ] `Radius.*` types use apiVersion `2025-08-01-preview`; `Applications.Core` types use `2023-10-01-preview`
 - [ ] `extension radius` is the first line
 - [ ] Namespace-level extensions (`radiusCompute`, `radiusData`, `radiusSecurity`) declared for each namespace used
 - [ ] `param environment string` is declared
 - [ ] `@secure() param password string` declared if database credentials are needed
 - [ ] `param image string` declared if building container images
-- [ ] Exactly one `Radius.Core/applications` resource
+- [ ] Exactly one `Applications.Core/applications` resource
 - [ ] Database resources have `secretName` referencing a `Radius.Security/secrets` resource
 - [ ] Every container has `environment`, `application`, `containers`
 - [ ] `connections` is a top-level property under `properties`, NOT inside `containers`
@@ -345,7 +370,8 @@ Before outputting, verify ALL:
 
 ## Guardrails
 
-- ONLY use resource types listed in the Resource Type Resolution table above.
+- ONLY use resource types listed in the Resource Type Resolution tables above.
+- Use `Applications.Core/applications@2023-10-01-preview` for the application resource — NOT `Radius.Core/applications`.
 - Do NOT set readOnly properties — they are output by recipes at deploy time.
 - Do NOT reference readOnly properties of other resources in Bicep (e.g. `database.properties.host`).
 - Do NOT use array syntax where the schema specifies object maps (`connections`, `containers`, `ports`, `volumes`, `env` are all object maps).

@@ -13,22 +13,24 @@
 
 ## Resource mapping
 
-| Source component | Radius Resource Type | Exists in resource-types-contrib? |
+| Source component | Radius Resource Type | API Version |
 |---|---|---|
-| Dockerfile (build image) | `Radius.Compute/containerImages` | Yes |
-| Node.js container | `Radius.Compute/containers` | Yes |
-| MySQL 8.0 | `Radius.Data/mySqlDatabases` | Yes |
-| DB credentials | `Radius.Security/secrets` | Yes |
+| Application grouping | `Applications.Core/applications` | `2023-10-01-preview` |
+| Dockerfile (build image) | `Radius.Compute/containerImages` | `2025-08-01-preview` |
+| Node.js container | `Radius.Compute/containers` | `2025-08-01-preview` |
+| MySQL 8.0 | `Radius.Data/mySqlDatabases` | `2025-08-01-preview` |
+| DB credentials | `Radius.Security/secrets` | `2025-08-01-preview` |
 
 ## Key decisions explained
 
-1. **`containerImages` resource** — the app has a Dockerfile but no published image. The `containerImages` resource builds and pushes it.
-2. **`param image string`** — image reference is parameterized, not hardcoded.
-3. **`build.context: '/app/src/todo-list-app'`** — the filesystem path where the repo source is volume-mounted on the Kubernetes node.
-4. **`Radius.Security/secrets`** — database credentials (username + password) are stored in a secret resource. The database references it via `secretName: dbSecret.name`.
-5. **`@secure() param password string`** — password is passed at deploy time, never hardcoded.
-6. **`database: 'todos'`** — matches the `MYSQL_DATABASE: todos` from compose.yaml.
-7. **`version: '8.0'`** — matches `mysql:8.0` from compose.yaml.
-8. **Two connections on container** — `mysqldb` for database auto-injection; `demoContainerImage` for build ordering.
-9. **No routes** — not added unless external ingress is explicitly required.
-10. **App code change required** — `Radius.Compute/containers` injects a JSON blob via `CONNECTION_MYSQLDB_PROPERTIES`, not individual vars. The app's `src/persistence/index.js` must be updated to parse this JSON. See [connection-conventions.md](connection-conventions.md) for helper code.
+1. **`Applications.Core/applications@2023-10-01-preview`** — the application resource is a built-in Radius type, NOT from `resource-types-contrib`. It uses the older API version.
+2. **`containerImages` resource** — the app has a Dockerfile but no published image. The `containerImages` resource builds and pushes it.
+3. **`param image string`** — image reference is parameterized, not hardcoded.
+4. **`build.context: '/app/src/todo-list-app'`** — the filesystem path where the repo source is volume-mounted on the Kubernetes node.
+5. **`Radius.Security/secrets`** — database credentials (username + password) are stored in a secret resource. The database references it via `secretName: dbSecret.name`.
+6. **`@secure() param password string`** — password is passed at deploy time, never hardcoded.
+7. **`database: 'todos'`** — matches the `MYSQL_DATABASE: todos` from compose.yaml.
+8. **`version: '8.0'`** — matches `mysql:8.0` from compose.yaml.
+9. **Two connections on container** — `mysqldb` for database auto-injection; `demoContainerImage` for build ordering.
+10. **No routes** — not added unless external ingress is explicitly required.
+11. **App code change required** — `Radius.Compute/containers` injects a JSON blob via `CONNECTION_MYSQLDB_PROPERTIES`, not individual vars. The app's `src/persistence/index.js` must be updated to parse this JSON. See [connection-conventions.md](connection-conventions.md) for helper code.
