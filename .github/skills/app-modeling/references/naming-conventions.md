@@ -4,7 +4,7 @@
 |---|---|---|
 | Bicep symbolic name | camelCase, descriptive | `todoApp`, `mysqlDatabase`, `webContainer` |
 | Resource `name` property | kebab-case, matches app/repo name | `'todo-list-app'`, `'my-database'` |
-| Connection keys | camelCase, short, describes the target | `mysqldb`, `redis`, `storage` |
+| Connection keys | camelCase, short, describes the target | `mysqldb`, `redis`, `storage`, `image` |
 | Application name | kebab-case, matches repository name | `'todo-list-app'` |
 | Container keys (in `containers` map) | camelCase, describes the container role | `todo`, `frontend`, `api` |
 | Port keys (in `ports` map) | camelCase, describes the protocol/use | `web`, `http`, `grpc` |
