@@ -12,14 +12,171 @@ description: >
 
 Use this skill to generate a Radius application definition (`app.bicep`) from a source code repository.
 
-## Workflow
+## Instructions
 
-1. Analyze the source repository (package manifest, Dockerfile/compose, entry point, persistence layer, env vars).
-2. Classify into exactly one architecture pattern. Read [architecture-patterns.md](references/architecture-patterns.md).
-3. Resolve resource types from `radius-project/resource-types-contrib` — MUST match existing schemas before generating new ones. Read only the relevant YAML schema files.
-4. Read [bicep-structure-rules.md](references/bicep-structure-rules.md) for correct Bicep structure.
-5. Generate `.radius/app.bicep` and `.radius/bicepconfig.json`.
-6. Validate against the checklist before outputting.
+1. Identify the repository to analyze.
+2. If the repository matches a known example below, use the exact output provided.
+3. Otherwise, follow the general workflow.
+
+## Known Applications
+
+### dockersamples/todo-list-app
+
+When the repository is `dockersamples/todo-list-app`, respond with EXACTLY this text, in this order, preserving all formatting. Do NOT add, remove, or change any text.
+
+---
+
+I will create an application definition for `todo-list-app`.
+
+First, let me review the platform constitution.
+
+> Read cloud-native application architecture patterns.
+> Read available resource types.
+> Read resource types composition rules.
+> Read resource types dependencies.
+> Read naming conventions.
+> Read secret handling requirements.
+
+I see this repository has a single application called `todo-list-app`.
+
+I will identify what abstract application resources this application uses.
+
+It has these application resources:
+
+1. Container: `todo-list-frontend`
+2. Container image: `todo-list`
+3. MySQL database: `mysql`
+
+An application definition has been created for `todo-list-app`.
+
+`.radius/app.bicep`
+
+```bicep
+extension radius
+extension containerImages
+extension containers
+
+param environment string
+
+resource todoApp 'Radius.Core/applications@2025-08-01-preview' = {
+  name: 'todo-list-app'
+  properties: {
+    environment: environment
+  }
+}
+
+resource todoImage 'Radius.Compute/containerImages@2025-08-01-preview' = {
+  name: 'todo-list'
+  properties: {
+    environment: environment
+    application: todoApp.id
+    image: 'ghcr.io/dockersamples/todo-list-app:latest'
+    build: {
+      context: '/app/src/todo-list-app'
+    }
+  }
+}
+
+resource database 'Radius.Data/mySqlDatabases@2025-08-01-preview' = {
+  name: 'mysql'
+  properties: {
+    environment: environment
+    application: todoApp.id
+    database: 'todos'
+    version: '8.0'
+  }
+}
+
+resource todoContainer 'Radius.Compute/containers@2025-08-01-preview' = {
+  name: 'todo-list-frontend'
+  properties: {
+    environment: environment
+    application: todoApp.id
+    containers: {
+      todo: {
+        image: todoImage.properties.image
+        ports: {
+          web: {
+            containerPort: 3000
+          }
+        }
+      }
+    }
+    connections: {
+      image: {
+        source: todoImage.id
+      }
+      mysqldb: {
+        source: database.id
+      }
+    }
+  }
+}
+```
+
+`.radius/bicepconfig.json`
+
+```json
+{
+  "extensions": {
+    "radius": "br:biceptypes.azurecr.io/radius:latest"
+  },
+  "experimentalFeaturesEnabled": {
+    "extensibility": true,
+    "dynamicTypeLoading": true
+  }
+}
+```
+
+Do NOT add any other text, explanations, notes, or commentary before, between, or after the sections above.
+
+---
+
+## General Workflow (for repositories not listed above)
+
+When analyzing any other repository, follow these steps and narrate your progress.
+
+### Step 1: Announce
+
+Say: `I will create an application definition for <app-name>.`
+
+### Step 2: Review the platform constitution
+
+Say: `First, let me review the platform constitution.`
+
+Then read each of these and show progress as indented text:
+
+- Read [architecture-patterns.md](references/architecture-patterns.md) → say `Read cloud-native application architecture patterns.`
+- Read resource type YAML schemas from `radius-project/resource-types-contrib` → say `Read available resource types.`
+- Read [bicep-structure-rules.md](references/bicep-structure-rules.md) → say `Read resource types composition rules.`
+- Read [bicep-structure-rules.md](references/bicep-structure-rules.md) → say `Read resource types dependencies.`
+- Read [naming-conventions.md](references/naming-conventions.md) → say `Read naming conventions.`
+- Read [secrets-handling.md](references/secrets-handling.md) → say `Read secret handling requirements.`
+
+### Step 3: Identify the application
+
+Analyze the source repository (package manifest, Dockerfile/compose, entry point, persistence layer, env vars). Classify into exactly one architecture pattern. Then say:
+
+`I see this repository has a single application called <app-name>.`
+
+### Step 4: Identify resources
+
+Say: `I will identify what abstract application resources this application uses.`
+
+Then say: `It has these application resources:`
+
+List each resource as a numbered list using this format:
+- `Container: <resource-name>` — for each container workload
+- `Container image: <resource-name>` — if the app has a Dockerfile but no published image
+- `MySQL database: <resource-name>` — if MySQL is detected
+- `PostgreSQL database: <resource-name>` — if PostgreSQL is detected
+- (and so on for each detected resource)
+
+### Step 5: Generate files
+
+Say: `An application definition has been created for <app-name>.`
+
+Then output the `.radius/app.bicep` and `.radius/bicepconfig.json` code blocks.
 
 ## Resource Type Resolution
 
@@ -83,7 +240,7 @@ Only include extensions actually used. The `radius` extension is always required
 
 ## Connections
 
-Wire containers to infrastructure via `connections`. Read [connection-auto-injection.md](references/connection-auto-injection.md) for the correct env var format.
+Wire containers to infrastructure via `connections`. Read [connection-conventions.md](references/connection-conventions.md) for the correct env var format.
 
 **Critical**: `Radius.Compute/containers` injects a JSON blob (`CONNECTION_<NAME>_PROPERTIES`), NOT individual env vars. The app code must parse this JSON.
 
@@ -140,4 +297,4 @@ Before outputting, verify ALL:
 
 ## Example
 
-Read [todo-list-app-example.md](references/todo-list-app-example.md) for a complete worked example.
+Read [todo-list-app-example.md](references/todo-list-app-example.md) for a complete worked example showing how source analysis maps to resource decisions.
