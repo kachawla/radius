@@ -8,7 +8,7 @@ Classify the application into exactly ONE of these patterns. This determines the
 
 ## Pattern B: Stateful / Database-Backed Application
 - **Signals**: HTTP server + database client library (mysql, mysql2, pg, sqlite3, mongoose, sequelize, prisma, etc.)
-- **Resources**: `Radius.Compute/containers` + `Radius.Data/*` (matching database type) + optional `Radius.Compute/routes`
+- **Resources**: `Radius.Compute/containers` + `Radius.Data/*` (matching database type) + `Radius.Security/secrets` (for DB credentials) + optional `Radius.Compute/routes`
 
 ## Pattern C: Event-Driven Application
 - **Signals**: Message queue client (amqplib, kafkajs, sqs-consumer, bull, etc.), pub/sub patterns

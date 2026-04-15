@@ -44,8 +44,9 @@ I will identify what abstract application resources this application uses.
 It has these application resources:
 
 1. Container: `todo-list-frontend`
-2. Container image: `todo-list`
+2. Container image: `demo-image`
 3. MySQL database: `mysql`
+4. Secret: `dbsecret`
 
 An application definition has been created for `todo-list-app`.
 
@@ -53,27 +54,22 @@ An application definition has been created for `todo-list-app`.
 
 ```bicep
 extension radius
-extension containerImages
-extension containers
+extension radiusCompute
+extension radiusSecurity
+extension radiusData
 
 param environment string
+
+@secure()
+param password string
+
+@description('The full container image reference to build and push. Must be lowercase.')
+param image string
 
 resource todoApp 'Radius.Core/applications@2025-08-01-preview' = {
   name: 'todo-list-app'
   properties: {
     environment: environment
-  }
-}
-
-resource todoImage 'Radius.Compute/containerImages@2025-08-01-preview' = {
-  name: 'todo-list'
-  properties: {
-    environment: environment
-    application: todoApp.id
-    image: 'ghcr.io/dockersamples/todo-list-app:latest'
-    build: {
-      context: '/app/src/todo-list-app'
-    }
   }
 }
 
@@ -84,6 +80,35 @@ resource database 'Radius.Data/mySqlDatabases@2025-08-01-preview' = {
     application: todoApp.id
     database: 'todos'
     version: '8.0'
+    secretName: dbSecret.name
+  }
+}
+
+resource dbSecret 'Radius.Security/secrets@2025-08-01-preview' = {
+  name: 'dbsecret'
+  properties: {
+    environment: environment
+    application: todoApp.id
+    data: {
+      USERNAME: {
+        value: 'admin'
+      }
+      PASSWORD: {
+        value: password
+      }
+    }
+  }
+}
+
+resource demoImage 'Radius.Compute/containerImages@2025-08-01-preview' = {
+  name: 'demo-image'
+  properties: {
+    environment: environment
+    application: todoApp.id
+    image: image
+    build: {
+      context: '/app/src/todo-list-app'
+    }
   }
 }
 
@@ -94,7 +119,7 @@ resource todoContainer 'Radius.Compute/containers@2025-08-01-preview' = {
     application: todoApp.id
     containers: {
       todo: {
-        image: todoImage.properties.image
+        image: demoImage.properties.image
         ports: {
           web: {
             containerPort: 3000
@@ -103,11 +128,11 @@ resource todoContainer 'Radius.Compute/containers@2025-08-01-preview' = {
       }
     }
     connections: {
-      image: {
-        source: todoImage.id
-      }
       mysqldb: {
         source: database.id
+      }
+      demoContainerImage: {
+        source: demoImage.id
       }
     }
   }
@@ -118,12 +143,15 @@ resource todoContainer 'Radius.Compute/containers@2025-08-01-preview' = {
 
 ```json
 {
-  "extensions": {
-    "radius": "br:biceptypes.azurecr.io/radius:latest"
-  },
   "experimentalFeaturesEnabled": {
-    "extensibility": true,
-    "dynamicTypeLoading": true
+    "extensibility": true
+  },
+  "extensions": {
+    "radius": "br:biceptypes.azurecr.io/radius:latest",
+    "radiusCompute": "br:biceptypes.azurecr.io/radiuscompute:latest",
+    "radiusData": "br:biceptypes.azurecr.io/radiusdata:latest",
+    "radiusSecurity": "br:biceptypes.azurecr.io/radiussecurity:latest",
+    "aws": "br:biceptypes.azurecr.io/aws:latest"
   }
 }
 ```
@@ -170,6 +198,7 @@ List each resource as a numbered list using this format:
 - `Container image: <resource-name>` — if the app has a Dockerfile but no published image
 - `MySQL database: <resource-name>` — if MySQL is detected
 - `PostgreSQL database: <resource-name>` — if PostgreSQL is detected
+- `Secret: <resource-name>` — for database credentials or app-specific secrets
 - (and so on for each detected resource)
 
 ### Step 5: Generate files
@@ -195,48 +224,73 @@ Read the resource type YAML schema files from the `radius-project/resource-types
 
 This is the COMPLETE list. There are no other resource types available. Do NOT use any type not listed above. Do NOT invent properties — use only what the YAML schema defines.
 
+## Extension naming
+
+Bicep extensions are named by namespace, NOT by individual type:
+
+| Namespace | Extension name | Registry |
+|---|---|---|
+| `Radius.Core` | `radius` | `br:biceptypes.azurecr.io/radius:latest` |
+| `Radius.Compute` | `radiusCompute` | `br:biceptypes.azurecr.io/radiuscompute:latest` |
+| `Radius.Data` | `radiusData` | `br:biceptypes.azurecr.io/radiusdata:latest` |
+| `Radius.Security` | `radiusSecurity` | `br:biceptypes.azurecr.io/radiussecurity:latest` |
+
+Use `extension radiusCompute` — NOT `extension containerImages` or `extension containers`.
+
 ## app.bicep Structure (mandatory order)
 
 ```bicep
 extension radius
-extension containerImages               // only if building from Dockerfile
-extension containers                    // only if using containerImages
+extension radiusCompute               // if using Radius.Compute/* types
+extension radiusSecurity              // if using Radius.Security/* types
+extension radiusData                  // if using Radius.Data/* types
 
 param environment string
 
+@secure()
+param password string                 // if database credentials needed
+
+@description('The full container image reference to build and push. Must be lowercase.')
+param image string                    // if building container images
+
 // 1. Application resource — always exactly one
-// 2. Container image resources (if building from Dockerfile)
-// 3. Data / infrastructure resources (databases, caches)
-// 4. Container resources (with connections to images and infra)
-// 5. Routes (only if external ingress needed)
+// 2. Data / infrastructure resources (databases, caches)
+// 3. Secret resources (database credentials, API keys)
+// 4. Container image resources (if building from Dockerfile)
+// 5. Container resources (with connections to images and infra)
+// 6. Routes (only if external ingress needed)
 ```
 
 Rules:
-- Always start with `extension radius` then any additional extensions, then `param environment string`.
+- Always start with `extension radius` then namespace-level extensions, then params.
 - Always declare exactly ONE `Radius.Core/applications` resource.
-- If the app has a Dockerfile but no published image, add a `Radius.Compute/containerImages` resource. The container must reference the image via `myImage.properties.image` and have a connection to `myImage.id`.
+- If the app has a Dockerfile but no published image, add a `Radius.Compute/containerImages` resource. Use a `param image string` for the image reference. The container must reference the image via `demoImage.properties.image` and have a connection to `demoImage.id`.
+- For database credentials, create a `Radius.Security/secrets` resource and reference it via `secretName` on the database resource.
+- Use `@secure() param` for passwords — NEVER hardcode them.
 - For each container service in the source app, emit exactly one `Radius.Compute/containers` resource.
 - For each backing data store, emit the matching `Radius.Data/*` resource.
-- Only add `Radius.Compute/routes` if the app needs external ingress. Service-to-service does NOT require routes.
-- Only add `Radius.Compute/persistentVolumes` for file storage needs. Database persistence is handled by the database recipe.
+- Only add `Radius.Compute/routes` if the app needs external ingress.
 
 ## Bicep Configuration
 
-Every project using `Radius.*` resource types needs a `.radius/bicepconfig.json` alongside `app.bicep`. Generate this when creating `app.bicep`:
+Every project using `Radius.*` resource types needs a `.radius/bicepconfig.json` alongside `app.bicep`:
 
 ```json
 {
-  "extensions": {
-    "radius": "br:biceptypes.azurecr.io/radius:latest"
-  },
   "experimentalFeaturesEnabled": {
-    "extensibility": true,
-    "dynamicTypeLoading": true
+    "extensibility": true
+  },
+  "extensions": {
+    "radius": "br:biceptypes.azurecr.io/radius:latest",
+    "radiusCompute": "br:biceptypes.azurecr.io/radiuscompute:latest",
+    "radiusData": "br:biceptypes.azurecr.io/radiusdata:latest",
+    "radiusSecurity": "br:biceptypes.azurecr.io/radiussecurity:latest",
+    "aws": "br:biceptypes.azurecr.io/aws:latest"
   }
 }
 ```
 
-Only include extensions actually used. The `radius` extension is always required. Add additional extensions for `Radius.*` resource types as needed.
+Include all extensions that may be needed. The `radius` and `aws` extensions are always included.
 
 ## Connections
 
@@ -249,6 +303,12 @@ Rules:
 - If the source app uses different env var names (e.g. `MYSQL_HOST` instead of parsing `CONNECTION_MYSQLDB_PROPERTIES`), either update the app code (preferred), or set `disableDefaultEnvVars: true` and map manually.
 - Only add explicit `env` entries for app-specific variables NOT covered by connection auto-injection.
 
+## Secrets
+
+Read [secrets-handling.md](references/secrets-handling.md).
+
+Database resources reference secrets via `secretName: mySecret.name`. The secret resource holds the credentials (username, password). Use `@secure() param` to pass the password at deploy time.
+
 ## Bicep Structure Rules
 
 Read [bicep-structure-rules.md](references/bicep-structure-rules.md) for all structural rules including valid Bicep patterns, common mistakes, and properties that do NOT exist.
@@ -257,10 +317,6 @@ Read [bicep-structure-rules.md](references/bicep-structure-rules.md) for all str
 
 Read [naming-conventions.md](references/naming-conventions.md).
 
-## Secrets
-
-Read [secrets-handling.md](references/secrets-handling.md).
-
 ## Validation Checklist
 
 Before outputting, verify ALL:
@@ -268,9 +324,12 @@ Before outputting, verify ALL:
 - [ ] Every property used exists in that YAML schema — no invented properties
 - [ ] Every apiVersion is `2025-08-01-preview`
 - [ ] `extension radius` is the first line
-- [ ] Additional extensions (`containerImages`, `containers`) declared if those resource types are used
+- [ ] Namespace-level extensions (`radiusCompute`, `radiusData`, `radiusSecurity`) declared for each namespace used
 - [ ] `param environment string` is declared
+- [ ] `@secure() param password string` declared if database credentials are needed
+- [ ] `param image string` declared if building container images
 - [ ] Exactly one `Radius.Core/applications` resource
+- [ ] Database resources have `secretName` referencing a `Radius.Security/secrets` resource
 - [ ] Every container has `environment`, `application`, `containers`
 - [ ] `connections` is a top-level property under `properties`, NOT inside `containers`
 - [ ] `connections` is an object map, NOT an array
@@ -278,21 +337,25 @@ Before outputting, verify ALL:
 - [ ] `disableDefaultEnvVars` is on the connection entry, NOT on the container
 - [ ] No manual `env` duplicates auto-injected connection vars
 - [ ] No `readOnly` properties set on resource declarations
-- [ ] Container images reference `containerImages.properties.image` or a real published image — never a bare base image
+- [ ] Container images use `param image string`, not a hardcoded image reference
 - [ ] Ports use `containerPort`, NOT `port`
 - [ ] `.radius/bicepconfig.json` is generated alongside `app.bicep`
+- [ ] `bicepconfig.json` includes all namespace extensions with `br:biceptypes.azurecr.io` URLs
 - [ ] No comments explaining skill rules appear in the output
 
 ## Guardrails
 
-- ONLY use resource types listed in the Resource Type Resolution table above. If a type is not in that table, it does not exist. Do NOT invent resource types, do NOT invent properties on existing types, and do NOT reference schemas that are not in `resource-types-contrib`.
+- ONLY use resource types listed in the Resource Type Resolution table above.
 - Do NOT set readOnly properties — they are output by recipes at deploy time.
-- Do NOT reference readOnly properties of other resources in Bicep (e.g. `database.properties.host`) — these are not available at compile time. Use connection auto-injection.
+- Do NOT reference readOnly properties of other resources in Bicep (e.g. `database.properties.host`).
 - Do NOT use array syntax where the schema specifies object maps (`connections`, `containers`, `ports`, `volumes`, `env` are all object maps).
 - Do NOT place `connections` inside `containers` — it is a top-level property under `properties`.
-- Do NOT include comments explaining skill rules or why properties are absent. The generated app.bicep must be clean, production-ready Bicep.
+- Do NOT include comments explaining skill rules or why properties are absent.
 - Do NOT use a bare runtime base image (e.g. `node:22-alpine`) as the container image when the app has a Dockerfile. Use `Radius.Compute/containerImages` to build and push.
-- Do NOT create a `Radius.Security/secrets` resource for database credentials. Database passwords are generated by the database recipe and auto-injected via connections.
+- Do NOT use `extension containerImages` or `extension containers` — use `extension radiusCompute`.
+- ALWAYS create a `Radius.Security/secrets` resource for database credentials and reference it via `secretName`.
+- ALWAYS use `@secure() param` for passwords.
+- ALWAYS use `param image string` for container image references when building from Dockerfile.
 - Ask for clarification if the app's architecture is ambiguous.
 
 ## Example

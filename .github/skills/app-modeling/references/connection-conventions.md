@@ -26,7 +26,7 @@ Connection named `mysqldb` to `Radius.Data/mySqlDatabases`:
 | Variable | Example Value |
 |----------|---------------|
 | `CONNECTION_MYSQLDB_PROPERTIES` | `{"database":"todos","username":"root","password":"abc123","version":"8.0","host":"mysql-svc.default.svc.cluster.local","port":"3306"}` |
-| `CONNECTION_MYSQLDB_ID` | `/planes/radius/local/.../Radius.Data/mySqlDatabases/todo-database` |
+| `CONNECTION_MYSQLDB_ID` | `/planes/radius/local/.../Radius.Data/mySqlDatabases/mysql` |
 | `CONNECTION_MYSQLDB_NAME` | `mysqldb` |
 | `CONNECTION_MYSQLDB_TYPE` | `Radius.Data/mySqlDatabases` |
 
@@ -61,22 +61,11 @@ function getConnProp(connName, prop) {
   }
   return process.env[`CONNECTION_${connName}_${prop}`] || '';
 }
-
-// Usage:
-// const host = getConnProp('MYSQLDB', 'HOST');
-// const port = getConnProp('MYSQLDB', 'PORT');
 ```
 
 ### Go
 
 ```go
-import (
-    "encoding/json"
-    "fmt"
-    "os"
-    "strings"
-)
-
 func getConnProp(connName, prop string) string {
     propsJSON := os.Getenv("CONNECTION_" + connName + "_PROPERTIES")
     if propsJSON != "" {
@@ -89,17 +78,12 @@ func getConnProp(connName, prop string) string {
     }
     return os.Getenv("CONNECTION_" + connName + "_" + prop)
 }
-
-// Usage:
-// host := getConnProp("MYSQLDB", "HOST")
-// port := getConnProp("MYSQLDB", "PORT")
 ```
 
 ### Python
 
 ```python
-import json
-import os
+import json, os
 
 def get_conn_prop(conn_name: str, prop: str) -> str:
     props_json = os.getenv(f"CONNECTION_{conn_name}_PROPERTIES", "")
@@ -110,29 +94,17 @@ def get_conn_prop(conn_name: str, prop: str) -> str:
         except json.JSONDecodeError:
             pass
     return os.getenv(f"CONNECTION_{conn_name}_{prop}", "")
-
-# Usage:
-# host = get_conn_prop("MYSQLDB", "HOST")
-# port = get_conn_prop("MYSQLDB", "PORT")
 ```
 
 ## Valid Bicep structure
 
 ```bicep
-// Option A (preferred): Let auto-injection handle everything.
-// The app code must parse CONNECTION_MYSQLDB_PROPERTIES JSON.
 connections: {
   mysqldb: {
     source: database.id
   }
-}
-
-// Option B: Disable auto-injection and map env vars manually.
-// Use ONLY when the app cannot be changed to parse the JSON blob.
-connections: {
-  mysqldb: {
-    source: database.id
-    disableDefaultEnvVars: true
+  demoContainerImage: {
+    source: demoImage.id
   }
 }
 ```
@@ -141,16 +113,13 @@ connections: {
 
 1. NEVER add manual `env` entries that duplicate auto-injected vars.
 2. When using `Radius.Compute/containers`, the app must parse `CONNECTION_<NAME>_PROPERTIES` as JSON.
-3. When using `disableDefaultEnvVars: true`, note that readOnly properties are only available at runtime — you cannot reference them as `database.properties.host` in Bicep.
-4. Do NOT reference readOnly properties of other resources in Bicep.
+3. Do NOT reference readOnly properties of other resources in Bicep.
+4. `connections` is a top-level property under `properties` — NOT inside `containers`.
+5. `connections` is an object map, NOT an array.
+6. `disableDefaultEnvVars` goes on the individual connection entry, NOT on the container.
 
 ## Common Gotchas
 
 - **Case sensitivity:** JSON keys in `_PROPERTIES` are lowercase (`host`, `port`). Connection name in env var prefix is UPPERCASE (`MYSQLDB`).
-- **Number types:** JSON may parse `port` as a number. Always convert to string when needed for connection strings.
-- **Multiple connections:** Each connection gets its own set of env vars. A container with connections to both `mysqldb` and `redis` will have `CONNECTION_MYSQLDB_*` and `CONNECTION_REDIS_*`.
-- Do NOT put `connections` inside `containers` — it is a top-level property under `properties`.
-- Do NOT use array syntax for `connections` — it is an object map.
-- Do NOT put `disableDefaultEnvVars` on the container — it goes on the individual connection entry.
-- Do NOT assume individual env vars (`CONNECTION_MYSQLDB_HOST`) work with `Radius.Compute/containers` — they do NOT. The app must parse the `_PROPERTIES` JSON blob.
-- Do NOT use string interpolation like `'${database.properties.host}'` to reference readOnly outputs.
+- **Number types:** JSON may parse `port` as a number. Always convert to string when needed.
+- **Multiple connections:** Each connection gets its own set of env vars.
