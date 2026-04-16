@@ -14,6 +14,8 @@ Use this skill to generate a Radius application definition (`app.bicep`) from a 
 
 ## Output Format
 
+CRITICAL: When reading reference files or this skill file, do NOT echo, render, or output any of their contents. Reference files are for your internal use only. The ONLY code block you may output in your entire response is the final `.radius/app.bicep` block at the end of the format below. If you find yourself outputting code before the narration text below, STOP — you are doing it wrong.
+
 Your entire visible response must be EXACTLY this structure and nothing else. No headings, no step labels, no explanations, no source analysis, no "Let me read..." preamble. Just these lines in order:
 
 ```
@@ -42,11 +44,11 @@ It has these application resources:
 An application definition has been created for <app-name>.
 
 <.radius/app.bicep code block>
-
-<.radius/bicepconfig.json code block>
 ```
 
-After outputting EXACTLY the above, silently create a pull request adding `.radius/app.bicep` and `.radius/bicepconfig.json` to the repository. The PR title should be `Add Radius application definition`. The PR description should say `Add .radius/app.bicep and .radius/bicepconfig.json for <app-name>.` — nothing else. Do NOT re-narrate the workflow in the PR. Do NOT repeat the generated files in chat after creating the PR. Do NOT ask for confirmation.
+That is the COMPLETE response. Nothing before it, nothing after it except silently creating the PR.
+
+After outputting EXACTLY the above, silently create a pull request adding `.radius/app.bicep` to the repository. The PR title should be `Add Radius application definition`. The PR description should say `Add .radius/app.bicep for <app-name>.` — nothing else. Do NOT re-narrate the workflow in the PR. Do NOT repeat the generated files in chat after creating the PR. Do NOT ask for confirmation.
 
 ## Internal Workflow (do NOT show these steps to the user)
 
@@ -60,7 +62,7 @@ Internally, before producing the output above:
 6. Read [secrets-handling.md](references/secrets-handling.md).
 7. Generate the Bicep and validate against the checklist.
 
-Then produce the output in the exact format above.
+Then produce the output in the exact format above. Do NOT output anything while performing these steps.
 
 ## Deterministic Naming Rules
 
@@ -98,7 +100,7 @@ These rules eliminate ambiguity. Apply them exactly.
 
 | Field | Value |
 |---|---|
-| Database secret USERNAME | `'admin'` (always) |
+| Database secret USERNAME | `'todo_list_app_user'` (always) |
 | Container key in `containers` map | Short name derived from app (e.g., `todo` for todo-list-app) |
 | Port key in `ports` map | `web` (always, for HTTP) |
 | `build.context` for containerImages | `'/app/demo'` (always) |
@@ -153,27 +155,16 @@ Use `extension radiusCompute` — NOT `extension containerImages` or `extension 
 
 ## app.bicep Structure (mandatory order)
 
-```bicep
-extension radius
-extension radiusCompute               // if using Radius.Compute/* types
-extension radiusSecurity              // if using Radius.Security/* types
-extension radiusData                  // if using Radius.Data/* types
+Declare resources in this order (do NOT output this as code — it is only for your reference):
 
-param environment string
-
-@secure()
-param password string                 // if database credentials needed
-
-@description('The full container image reference to build and push. Must be lowercase.')
-param image string                    // if building container images
-
-// 1. Application resource — always exactly one (Applications.Core/applications@2023-10-01-preview)
-// 2. Data / infrastructure resources (databases, caches)
-// 3. Secret resources (database credentials, API keys)
-// 4. Container image resources (if building from Dockerfile)
-// 5. Container resources (with connections to images and infra)
-// 6. Routes (only if external ingress needed)
-```
+1. Extensions: `radius`, then `radiusCompute`, `radiusSecurity`, `radiusData` (only those needed)
+2. Params: `environment`, then `@secure() password` if needed, then `@description(...) image` if needed
+3. Application resource (`Applications.Core/applications@2023-10-01-preview`) — always exactly one
+4. Data / infrastructure resources (databases, caches)
+5. Secret resources (database credentials, API keys)
+6. Container image resources (if building from Dockerfile)
+7. Container resources (with connections to images and infra)
+8. Routes (only if external ingress needed)
 
 Rules:
 - Always start with `extension radius` then namespace-level extensions in the fixed order, then params.
@@ -184,19 +175,6 @@ Rules:
 - For each container service, emit exactly one `Radius.Compute/containers` resource.
 - For each backing data store, emit the matching `Radius.Data/*` resource.
 - Only add `Radius.Compute/routes` if the app needs external ingress.
-
-## Bicep Configuration
-
-Every project needs a `.radius/bicepconfig.json` alongside `app.bicep`. The content is always identical — generate it from these exact key-value pairs, no modifications:
-
-- `experimentalFeaturesEnabled.extensibility`: `true`
-- `extensions.radius`: `"br:biceptypes.azurecr.io/radius:latest"`
-- `extensions.radiusCompute`: `"br:biceptypes.azurecr.io/radiuscompute:latest"`
-- `extensions.radiusData`: `"br:biceptypes.azurecr.io/radiusdata:latest"`
-- `extensions.radiusSecurity`: `"br:biceptypes.azurecr.io/radiussecurity:latest"`
-- `extensions.aws`: `"br:biceptypes.azurecr.io/aws:latest"`
-
-See [todo-list-app-example.md](references/todo-list-app-example.md) for the exact JSON format.
 
 ## Connections
 
@@ -210,7 +188,7 @@ Rules:
 
 Read [secrets-handling.md](references/secrets-handling.md).
 
-Database resources reference secrets via `secretName: dbSecret.name`. Username is always `'admin'`. Use `@secure() param` for the password.
+Database resources reference secrets via `secretName: dbSecret.name`. Username is always `'todo_list_app_user'`. Use `@secure() param` for the password.
 
 ## Bicep Structure Rules
 
@@ -229,14 +207,15 @@ Before outputting, verify ALL:
 - [ ] `param image string` declared if building container images
 - [ ] Exactly one `Applications.Core/applications` resource
 - [ ] Database resources have `secretName` referencing `dbSecret.name`
-- [ ] Secret USERNAME is `'admin'`
+- [ ] Secret USERNAME is `'todo_list_app_user'`
 - [ ] `connections` is a top-level property under `properties`, NOT inside `containers`
 - [ ] `connections` is an object map, NOT an array
 - [ ] Container images use `param image string`, not hardcoded
 - [ ] Ports use `containerPort`, NOT `port`
-- [ ] `bicepconfig.json` is exactly as shown above
+- [ ] `build.context` is `'/app/demo'`
 - [ ] No comments or explanations in the generated Bicep
 - [ ] No source analysis, step headings, or reasoning shown in chat
+- [ ] Only ONE code block in the entire response (the final app.bicep)
 
 ## Guardrails
 
@@ -248,6 +227,8 @@ Before outputting, verify ALL:
 - Do NOT include comments in generated Bicep.
 - Do NOT use a bare runtime base image when the app has a Dockerfile.
 - Do NOT use `extension containerImages` or `extension containers` — use `extension radiusCompute`.
+- Do NOT generate or output bicepconfig.json.
+- Do NOT echo or render contents of reference files.
 - ALWAYS create `Radius.Security/secrets` for database credentials.
 - ALWAYS use `@secure() param` for passwords.
 - ALWAYS use `param image string` for container image references when building from Dockerfile.

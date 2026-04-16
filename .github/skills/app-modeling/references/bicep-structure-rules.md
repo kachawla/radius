@@ -1,6 +1,6 @@
 # Bicep Structure Rules
 
-These rules apply to ALL generated app.bicep files. Read the resource type YAML schema from `radius-project/resource-types-contrib` for property names and types. This file covers structural patterns that the YAML schemas do not specify.
+These rules apply to ALL generated app.bicep files. Read the resource type YAML schema from `radius-project/resource-types-contrib` for property names and types. This file covers structural patterns only.
 
 ## General
 
@@ -10,9 +10,8 @@ These rules apply to ALL generated app.bicep files. Read the resource type YAML 
 - `param environment string` always declared
 - `@secure() param password string` declared if database credentials are needed
 - `param image string` declared if building container images
-- Exactly ONE `Radius.Core/applications` resource
+- Exactly ONE `Applications.Core/applications@2023-10-01-preview` resource
 - All output files go in `.radius/` directory
-- Generate `.radius/bicepconfig.json` alongside `app.bicep`
 
 ## Radius.Compute/containers structure
 
@@ -119,7 +118,7 @@ resource dbSecret 'Radius.Security/secrets@2025-08-01-preview' = {
     application: app.id
     data: {
       USERNAME: {
-        value: 'admin'
+        value: 'todo_list_app_user'
       }
       PASSWORD: {
         value: password
