@@ -26,7 +26,7 @@
 1. **`Applications.Core/applications@2023-10-01-preview`** — the application resource is a built-in Radius type, NOT from `resource-types-contrib`. It uses the older API version.
 2. **`containerImages` resource** — the app has a Dockerfile but no published image. The `containerImages` resource builds and pushes it.
 3. **`param image string`** — image reference is parameterized, not hardcoded.
-4. **`build.context: '/app/src/todo-list-app'`** — the filesystem path where the repo source is volume-mounted on the Kubernetes node.
+4. **`build.context: '/app/demo'`** — the filesystem path where the repo source is volume-mounted on the Kubernetes node.
 5. **`Radius.Security/secrets`** — database credentials (username + password) are stored in a secret resource. The database references it via `secretName: dbSecret.name`.
 6. **`@secure() param password string`** — password is passed at deploy time, never hardcoded.
 7. **`database: 'todos'`** — matches the `MYSQL_DATABASE: todos` from compose.yaml.

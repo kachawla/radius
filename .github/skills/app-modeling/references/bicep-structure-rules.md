@@ -72,7 +72,7 @@ resource myImage 'Radius.Compute/containerImages@2025-08-01-preview' = {
     application: app.id
     image: image
     build: {
-      context: '/app/src/todo-list-app'
+      context: '/app/demo'
     }
   }
 }

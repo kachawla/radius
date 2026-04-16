@@ -101,6 +101,7 @@ These rules eliminate ambiguity. Apply them exactly.
 | Database secret USERNAME | `'admin'` (always) |
 | Container key in `containers` map | Short name derived from app (e.g., `todo` for todo-list-app) |
 | Port key in `ports` map | `web` (always, for HTTP) |
+| `build.context` for containerImages | `'/app/demo'` (always) |
 
 ### Extension order
 
