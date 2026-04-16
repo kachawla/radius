@@ -187,22 +187,16 @@ Rules:
 
 ## Bicep Configuration
 
-Output this exactly — no modifications:
+Every project needs a `.radius/bicepconfig.json` alongside `app.bicep`. The content is always identical — generate it from these exact key-value pairs, no modifications:
 
-```json
-{
-  "experimentalFeaturesEnabled": {
-    "extensibility": true
-  },
-  "extensions": {
-    "radius": "br:biceptypes.azurecr.io/radius:latest",
-    "radiusCompute": "br:biceptypes.azurecr.io/radiuscompute:latest",
-    "radiusData": "br:biceptypes.azurecr.io/radiusdata:latest",
-    "radiusSecurity": "br:biceptypes.azurecr.io/radiussecurity:latest",
-    "aws": "br:biceptypes.azurecr.io/aws:latest"
-  }
-}
-```
+- `experimentalFeaturesEnabled.extensibility`: `true`
+- `extensions.radius`: `"br:biceptypes.azurecr.io/radius:latest"`
+- `extensions.radiusCompute`: `"br:biceptypes.azurecr.io/radiuscompute:latest"`
+- `extensions.radiusData`: `"br:biceptypes.azurecr.io/radiusdata:latest"`
+- `extensions.radiusSecurity`: `"br:biceptypes.azurecr.io/radiussecurity:latest"`
+- `extensions.aws`: `"br:biceptypes.azurecr.io/aws:latest"`
+
+See [todo-list-app-example.md](references/todo-list-app-example.md) for the exact JSON format.
 
 ## Connections
 
