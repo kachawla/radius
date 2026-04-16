@@ -14,41 +14,28 @@ Use this skill to generate a Radius application definition (`app.bicep`) from a 
 
 ## Output Format
 
-CRITICAL: When reading reference files or this skill file, do NOT echo, render, or output any of their contents. Reference files are for your internal use only. The ONLY code block you may output in your entire response is the final `.radius/app.bicep` block at the end of the format below. If you find yourself outputting code before the narration text below, STOP — you are doing it wrong.
+Your entire visible response must follow this exact sequence. No headings, no step labels, no explanations, no source analysis, no "Let me read..." preamble.
 
-Your entire visible response must be EXACTLY this structure and nothing else. No headings, no step labels, no explanations, no source analysis, no "Let me read..." preamble. Just these lines in order:
+1. Say: I will create an application definition for `<app-name>`.
+2. Say: First, let me review the platform constitution.
+3. Show exactly these lines as a single blockquote:
+   > Read cloud-native application architecture patterns.
+   > Read available resource types.
+   > Read resource types composition rules.
+   > Read resource types dependencies.
+   > Read naming conventions.
+   > Read secret handling requirements.
+4. Say: I see this repository has a single application called `<app-name>`.
+5. Say: I will identify what abstract application resources this application uses.
+6. Say: It has these application resources:
+7. List resources as a numbered list (e.g. "1. Container: todo-list-frontend")
+8. Say: An application definition has been created for `<app-name>`.
+9. Output the `.radius/app.bicep` code block.
+10. Say: Would you like me to create a pull request with this file?
 
-```
-I will create an application definition for <app-name>.
+That is the COMPLETE chat response. Nothing before step 1, nothing after step 10. Do NOT automatically create a pull request. Wait for the user to confirm.
 
-First, let me review the platform constitution.
-
-> Read cloud-native application architecture patterns.
-> Read available resource types.
-> Read resource types composition rules.
-> Read resource types dependencies.
-> Read naming conventions.
-> Read secret handling requirements.
-
-I see this repository has a single application called <app-name>.
-
-I will identify what abstract application resources this application uses.
-
-It has these application resources:
-
-1. Container: <name>
-2. Container image: <name>
-3. <Database type> database: <name>
-4. Secret: <name>
-
-An application definition has been created for <app-name>.
-
-<.radius/app.bicep code block>
-```
-
-That is the COMPLETE response. Nothing before it, nothing after it except silently creating the PR.
-
-After outputting EXACTLY the above, silently create a pull request adding `.radius/app.bicep` to the repository. The PR title should be `Add Radius application definition`. The PR description should say `Add .radius/app.bicep for <app-name>.` — nothing else. Do NOT re-narrate the workflow in the PR. Do NOT repeat the generated files in chat after creating the PR. Do NOT ask for confirmation.
+If the user confirms, create a pull request adding `.radius/app.bicep` to the repository. The PR title should be `Add Radius application definition`. The PR body should say `Add .radius/app.bicep for <app-name>.` — nothing else.
 
 ## Internal Workflow (do NOT show these steps to the user)
 
@@ -215,7 +202,6 @@ Before outputting, verify ALL:
 - [ ] `build.context` is `'/app/demo'`
 - [ ] No comments or explanations in the generated Bicep
 - [ ] No source analysis, step headings, or reasoning shown in chat
-- [ ] Only ONE code block in the entire response (the final app.bicep)
 
 ## Guardrails
 
@@ -228,7 +214,6 @@ Before outputting, verify ALL:
 - Do NOT use a bare runtime base image when the app has a Dockerfile.
 - Do NOT use `extension containerImages` or `extension containers` — use `extension radiusCompute`.
 - Do NOT generate or output bicepconfig.json.
-- Do NOT echo or render contents of reference files.
 - ALWAYS create `Radius.Security/secrets` for database credentials.
 - ALWAYS use `@secure() param` for passwords.
 - ALWAYS use `param image string` for container image references when building from Dockerfile.
