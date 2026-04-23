@@ -1,0 +1,11 @@
+defaultRegistration: true
+namespace: Test.WithDefault
+types:
+  testResource:
+    apiVersions:
+      "2023-10-01-preview":
+        schema:
+          type: object
+          properties:
+            name:
+              type: string
