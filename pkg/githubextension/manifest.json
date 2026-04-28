@@ -2,7 +2,20 @@
   "manifest_version": 3,
   "name": "GitHub Radius",
   "description": "Adds Radius Deploy button to GitHub repositories for defining and deploying applications",
-  "version": "0.1.0",
+  "version": "0.2.0",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/radius-16.png",
+      "48": "icons/radius-48.png",
+      "128": "icons/radius-128.png"
+    }
+  },
+  "permissions": ["storage"],
+  "host_permissions": ["https://api.github.com/*"],
   "content_scripts": [
     {
       "matches": ["https://github.com/*/*"],

@@ -1,9 +1,6 @@
 (function () {
   'use strict';
 
-  var SKILL_URL =
-    'https://raw.githubusercontent.com/kachawla/radius/demo/.github/skills/app-modeling/SKILL.md';
-
   function getRepoInfo() {
     var match = window.location.pathname.match(/^\/([^/]+)\/([^/]+)/);
     if (!match) return null;
@@ -26,12 +23,89 @@
     return false;
   }
 
-  function buildCopilotUrl(owner, repo) {
-    var prompt = 'Create an application definition.\n\nRead ' + SKILL_URL;
-    return 'https://github.com/copilot?repo=' +
-      encodeURIComponent(owner + '/' + repo) +
-      '&prompt=' + encodeURIComponent(prompt);
+  function showToast(message, type) {
+    var existing = document.getElementById('radius-toast');
+    if (existing) existing.remove();
+
+    var toast = document.createElement('div');
+    toast.id = 'radius-toast';
+    toast.className = 'radius-toast radius-toast-' + type;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+
+    setTimeout(function () {
+      toast.classList.add('radius-toast-visible');
+    }, 10);
+
+    if (type !== 'progress') {
+      setTimeout(function () {
+        toast.classList.remove('radius-toast-visible');
+        setTimeout(function () { toast.remove(); }, 300);
+      }, 5000);
+    }
+
+    return toast;
   }
+
+  function handleDefineApp(repoInfo, dropdown) {
+    dropdown.classList.remove('radius-dropdown-visible');
+    showToast('Creating Copilot task to define application...', 'progress');
+
+    chrome.runtime.sendMessage(
+      { action: 'createCopilotTask', owner: repoInfo.owner, repo: repoInfo.repo },
+      function (response) {
+        var progressToast = document.getElementById('radius-toast');
+        if (progressToast) progressToast.remove();
+
+        if (!response) {
+          showToast('Failed to communicate with extension. Please reload.', 'error');
+          return;
+        }
+
+        if (response.error === 'no_token') {
+          showToast('GitHub token not set. Click the Radius extension icon to configure.', 'error');
+          return;
+        }
+
+        if (response.error) {
+          showToast('Error: ' + response.message, 'error');
+          return;
+        }
+
+        showToast('Copilot is working — waiting for PR to be created and merged...', 'progress');
+      }
+    );
+  }
+
+  // Listen for background status updates (PR found, merged, errors)
+  chrome.runtime.onMessage.addListener(function (message) {
+    if (message.action !== 'copilotStatus') return;
+
+    var d = message.data;
+    switch (message.status) {
+      case 'pr_found':
+        showToast(d.message, 'progress');
+        break;
+      case 'merged':
+        showToast(d.message, 'success');
+        setTimeout(function () {
+          window.location.href = d.fileUrl;
+        }, 1500);
+        break;
+      case 'merge_error':
+        showToast(d.message, 'error');
+        setTimeout(function () {
+          window.location.href = d.prUrl;
+        }, 3000);
+        break;
+      case 'timeout':
+        showToast(d.message, 'error');
+        setTimeout(function () {
+          window.location.href = d.issueUrl;
+        }, 3000);
+        break;
+    }
+  });
 
   function createDeployButton(repoInfo) {
     if (document.getElementById('radius-deploy-container')) return null;
@@ -65,12 +139,11 @@
     appSection.textContent = 'Application';
     dropdown.appendChild(appSection);
 
-    var defineApp = document.createElement('a');
+    var defineApp = document.createElement('div');
     defineApp.className = 'radius-dropdown-item';
-    defineApp.href = buildCopilotUrl(repoInfo.owner, repoInfo.repo);
     defineApp.textContent = 'Define an Application';
     defineApp.addEventListener('click', function () {
-      dropdown.classList.remove('radius-dropdown-visible');
+      handleDefineApp(repoInfo, dropdown);
     });
     dropdown.appendChild(defineApp);
 
