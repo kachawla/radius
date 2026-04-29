@@ -49,7 +49,7 @@
 
   function handleDefineApp(repoInfo, dropdown) {
     dropdown.classList.remove('radius-dropdown-visible');
-    showToast('Creating Copilot task to define application...', 'progress');
+    showToast('Copilot is creating application definition...', 'progress');
 
     chrome.runtime.sendMessage(
       { action: 'createCopilotTask', owner: repoInfo.owner, repo: repoInfo.repo },
@@ -72,7 +72,7 @@
           return;
         }
 
-        showToast('Copilot is working — waiting for PR to be created and merged...', 'progress');
+        showToast('Copilot is creating application definition...', 'progress');
       }
     );
   }
@@ -84,10 +84,10 @@
     var d = message.data;
     switch (message.status) {
       case 'pr_found':
-        showToast(d.message, 'progress');
+        showToast('Copilot is creating application definition...', 'progress');
         break;
       case 'merged':
-        showToast(d.message, 'success');
+        showToast('Application definition created!', 'success');
         setTimeout(function () {
           window.location.href = d.fileUrl;
         }, 1500);

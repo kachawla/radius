@@ -4,7 +4,7 @@
   var SKILL_URL =
     'https://raw.githubusercontent.com/kachawla/radius/demo/.github/skills/app-modeling/SKILL.md';
 
-  var POLL_INTERVAL = 15000; // 15 seconds
+  var POLL_INTERVAL_MIN = 0.25; // ~15 seconds
   var MAX_POLL_TIME = 600000; // 10 minutes
 
   function apiHeaders(token) {
@@ -17,87 +17,122 @@
   }
 
   function sendStatus(tabId, status, data) {
-    chrome.tabs.sendMessage(tabId, { action: 'copilotStatus', status: status, data: data });
+    chrome.tabs.sendMessage(tabId, { action: 'copilotStatus', status: status, data: data }).catch(function () {
+      console.log('[Radius] Could not send status to tab ' + tabId);
+    });
   }
 
-  function pollForPR(token, owner, repo, issueNumber, tabId) {
-    var startTime = Date.now();
+  function startPolling(token, owner, repo, issueNumber, tabId) {
+    var state = {
+      token: token,
+      owner: owner,
+      repo: repo,
+      issueNumber: issueNumber,
+      tabId: tabId,
+      startTime: Date.now(),
+    };
+    chrome.storage.local.set({ radiusPollState: state }, function () {
+      console.log('[Radius] Polling started for issue #' + issueNumber);
+      doPoll();
+      chrome.alarms.create('radiusPoll', { periodInMinutes: POLL_INTERVAL_MIN });
+    });
+  }
 
-    function poll() {
-      if (Date.now() - startTime > MAX_POLL_TIME) {
+  function stopPolling() {
+    chrome.alarms.clear('radiusPoll');
+    chrome.storage.local.remove('radiusPollState');
+    console.log('[Radius] Polling stopped');
+  }
+
+  function doPoll() {
+    chrome.storage.local.get(['radiusPollState'], function (result) {
+      var state = result.radiusPollState;
+      if (!state) {
+        chrome.alarms.clear('radiusPoll');
+        return;
+      }
+
+      var token = state.token;
+      var owner = state.owner;
+      var repo = state.repo;
+      var issueNumber = state.issueNumber;
+      var tabId = state.tabId;
+
+      if (Date.now() - state.startTime > MAX_POLL_TIME) {
         sendStatus(tabId, 'timeout', {
           message: 'Copilot is still working. Check the issue for progress.',
           issueUrl: 'https://github.com/' + owner + '/' + repo + '/issues/' + issueNumber,
         });
+        stopPolling();
         return;
       }
 
+      // Scan open PRs for the most recent one by Copilot
       fetch('https://api.github.com/repos/' + owner + '/' + repo + '/pulls?state=open&per_page=10&sort=created&direction=desc', {
         headers: apiHeaders(token),
       })
         .then(function (r) { return r.json(); })
         .then(function (pulls) {
-          console.log('[Radius] Polling PRs for issue #' + issueNumber + ', found:', pulls.length);
+          console.log('[Radius] Polling PRs, found:', pulls.length);
           var match = null;
           for (var i = 0; i < pulls.length; i++) {
             var pr = pulls[i];
-            var byBot = pr.user && (
-              pr.user.login === 'copilot-swe-agent[bot]' ||
-              pr.user.login === 'Copilot' ||
-              pr.user.login === 'copilot'
-            );
+            var login = pr.user && pr.user.login;
+            var byBot = login === 'copilot-swe-agent[bot]' ||
+                        login === 'Copilot' ||
+                        login === 'copilot';
 
-            console.log('[Radius] PR #' + pr.number + ' by ' + (pr.user && pr.user.login) + ' draft=' + pr.draft);
+            console.log('[Radius] PR #' + pr.number + ' by ' + login + ' draft=' + pr.draft);
 
-            if (!byBot) continue;
-
-            // Match: most recent open PR by Copilot (created after we started)
-            console.log('[Radius] Matched PR #' + pr.number);
-            match = pr;
-            break;
+            if (byBot) {
+              match = pr;
+              console.log('[Radius] Matched PR #' + pr.number);
+              break;
+            }
           }
 
           if (!match) {
-            setTimeout(poll, POLL_INTERVAL);
-            return;
+            console.log('[Radius] No Copilot PR found yet');
+            return; // alarm will retry
           }
 
-          // Fetch full PR details to check requested_reviewers
-          fetch('https://api.github.com/repos/' + owner + '/' + repo + '/pulls/' + match.number, {
+          // Fetch full PR details
+          return fetch('https://api.github.com/repos/' + owner + '/' + repo + '/pulls/' + match.number, {
             headers: apiHeaders(token),
           })
             .then(function (r) { return r.json(); })
             .then(function (fullPR) {
+              console.log('[Radius] Full PR #' + fullPR.number + ' draft=' + fullPR.draft);
               var hasReviewers = fullPR.requested_reviewers && fullPR.requested_reviewers.length > 0;
 
-              // Still draft and no reviewers → Copilot still working
               if (fullPR.draft && !hasReviewers) {
                 sendStatus(tabId, 'pr_found', {
                   message: 'Copilot opened a draft PR, waiting for it to finish...',
                   prUrl: fullPR.html_url,
                 });
-                setTimeout(poll, POLL_INTERVAL);
-                return;
+                return; // alarm will retry
               }
 
-              // Copilot is done (review requested or PR already ready)
+              // Copilot is done — merge
+              stopPolling();
               if (fullPR.draft) {
                 markReadyAndMerge(token, owner, repo, fullPR.node_id, fullPR.number, tabId);
               } else {
                 mergePR(token, owner, repo, fullPR.number, tabId);
               }
-            })
-            .catch(function () {
-              setTimeout(poll, POLL_INTERVAL);
             });
         })
-        .catch(function () {
-          setTimeout(poll, POLL_INTERVAL);
+        .catch(function (err) {
+          console.log('[Radius] Poll error:', err.message);
         });
-    }
-
-    poll();
+    });
   }
+
+  chrome.alarms.onAlarm.addListener(function (alarm) {
+    if (alarm.name === 'radiusPoll') {
+      doPoll();
+    }
+  });
 
   function markReadyAndMerge(token, owner, repo, prNodeId, prNumber, tabId) {
     sendStatus(tabId, 'pr_found', {
@@ -151,7 +186,7 @@
       .then(function () {
         sendStatus(tabId, 'merged', {
           message: 'Application definition merged!',
-          fileUrl: 'https://github.com/' + owner + '/' + repo + '/blob/main/.radius/app.bicep',
+          fileUrl: 'https://github.com/' + owner + '/' + repo + '/applications',
         });
       })
       .catch(function (err) {
@@ -177,13 +212,11 @@
       }
 
       var issueTitle = 'Create Radius application definition';
-      // Issue number isn't known yet; body is updated after creation
       var issueBody =
         'Create an application definition for this repository.\n\n' +
         'Read the skill instructions at: ' + SKILL_URL + '\n\n' +
         'Follow the skill instructions to analyze this repository and generate a `.radius/app.bicep` file.\n' +
-        'Create a pull request with the generated file.\n\n' +
-        '**IMPORTANT**: The pull request description MUST include the text `Resolves #<ISSUE_NUMBER>` where `<ISSUE_NUMBER>` is the number of this issue.';
+        'Create a pull request with the generated file.';
 
       fetch('https://api.github.com/repos/' + owner + '/' + repo + '/issues', {
         method: 'POST',
@@ -195,7 +228,7 @@
           agent_assignment: {
             target_repo: owner + '/' + repo,
             base_branch: 'main',
-            custom_instructions: 'Read the skill at ' + SKILL_URL + ' and follow its instructions exactly. IMPORTANT: In the pull request description, include the text "Closes #ISSUE_NUMBER" where ISSUE_NUMBER is the issue number that triggered this task.',
+            custom_instructions: 'Read the skill at ' + SKILL_URL + ' and follow its instructions exactly.',
             custom_agent: '',
             model: '',
           },
@@ -215,8 +248,7 @@
             issueNumber: issue.number,
             issueUrl: issue.html_url,
           });
-          // Start polling for the PR in the background
-          pollForPR(token, owner, repo, issue.number, tabId);
+          startPolling(token, owner, repo, issue.number, tabId);
         })
         .catch(function (err) {
           sendResponse({ error: 'api_error', message: err.message });

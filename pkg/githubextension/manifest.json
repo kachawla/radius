@@ -14,7 +14,7 @@
       "128": "icons/radius-128.png"
     }
   },
-  "permissions": ["storage"],
+  "permissions": ["storage", "alarms"],
   "host_permissions": ["https://api.github.com/*"],
   "content_scripts": [
     {
