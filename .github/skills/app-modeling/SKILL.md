@@ -131,12 +131,12 @@ This is the COMPLETE list. Do NOT use any type not listed above. Do NOT invent p
 
 Bicep extensions are named by namespace, NOT by individual type:
 
-| Namespace | Extension name | Registry |
-|---|---|---|
-| `Applications.Core` | `radius` | `br:biceptypes.azurecr.io/radius:latest` |
-| `Radius.Compute` | `radiusCompute` | `br:biceptypes.azurecr.io/radiuscompute:latest` |
-| `Radius.Data` | `radiusData` | `br:biceptypes.azurecr.io/radiusdata:latest` |
-| `Radius.Security` | `radiusSecurity` | `br:biceptypes.azurecr.io/radiussecurity:latest` |
+| Namespace | Extension name |
+|---|---|
+| `Applications.Core` | `radius` |
+| `Radius.Compute` | `radiusCompute` |
+| `Radius.Data` | `radiusData` |
+| `Radius.Security` | `radiusSecurity` |
 
 Use `extension radiusCompute` — NOT `extension containerImages` or `extension containers`.
 
