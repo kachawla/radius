@@ -19,6 +19,7 @@ package initializer
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -33,15 +34,17 @@ import (
 
 // Service implements the hosting.Service interface for registering manifests.
 type Service struct {
-	options *ucp.Options
+	options    *ucp.Options
+	embeddedFS fs.FS
 }
 
 var _ hosting.Service = (*Service)(nil)
 
 // NewService creates a server to register manifests.
-func NewService(options *ucp.Options) *Service {
+func NewService(options *ucp.Options, embeddedFS fs.FS) *Service {
 	return &Service{
-		options: options,
+		options:    options,
+		embeddedFS: embeddedFS,
 	}
 }
 
@@ -53,6 +56,31 @@ func (s *Service) Name() string {
 func (w *Service) Run(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
+	dbClient, err := w.options.DatabaseProvider.GetClient(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get database client: %w", err)
+	}
+
+	// Process embedded manifests.
+	if w.embeddedFS != nil {
+		providers, err := manifest.RegisterFS(ctx, w.embeddedFS)
+		if err != nil {
+			return fmt.Errorf("failed to process embedded manifests: %w", err)
+		}
+
+		for _, provider := range providers {
+			logger.Info("Registering resource provider from embedded manifests", "namespace", provider.Namespace)
+			if err := registerResourceProviderDirect(ctx, dbClient, "local", provider); err != nil {
+				return fmt.Errorf("failed to register embedded resource provider %s: %w", provider.Namespace, err)
+			}
+		}
+
+		if len(providers) > 0 {
+			logger.Info("Successfully registered default resource type manifests")
+		}
+	}
+
+	// Process directory-based manifests.
 	manifestDir := w.options.Config.Initialization.ManifestDirectory
 	if manifestDir == "" {
 		logger.Info("No manifest directory specified, initialization is complete")
@@ -63,11 +91,6 @@ func (w *Service) Run(ctx context.Context) error {
 		return fmt.Errorf("manifest directory does not exist: %w", err)
 	} else if err != nil {
 		return fmt.Errorf("error checking manifest directory: %w", err)
-	}
-
-	dbClient, err := w.options.DatabaseProvider.GetClient(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get database client: %w", err)
 	}
 
 	files, err := os.ReadDir(manifestDir)
