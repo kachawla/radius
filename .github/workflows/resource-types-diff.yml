@@ -1,0 +1,184 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: 'Resource Types Contrib Diff Report'
+
+on:
+  pull_request:
+    paths:
+      - 'go.mod'
+      - 'go.sum'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  diff-report:
+    name: Resource types diff report
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check if resource-types-contrib changed
+        id: check
+        run: |
+          # Get the old and new versions of resource-types-contrib from go.mod
+          OLD_VERSION=$(git show origin/${{ github.base_ref }}:go.mod | grep 'github.com/radius-project/resource-types-contrib' | awk '{print $2}' || true)
+          NEW_VERSION=$(grep 'github.com/radius-project/resource-types-contrib' go.mod | awk '{print $2}' || true)
+
+          if [ -z "$OLD_VERSION" ] && [ -z "$NEW_VERSION" ]; then
+            echo "resource-types-contrib not found in go.mod"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$OLD_VERSION" = "$NEW_VERSION" ]; then
+            echo "resource-types-contrib version unchanged ($OLD_VERSION)"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "old_version=$OLD_VERSION" >> "$GITHUB_OUTPUT"
+          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "resource-types-contrib changed: $OLD_VERSION -> $NEW_VERSION"
+
+      - name: Setup Go
+        if: steps.check.outputs.changed == 'true'
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Generate diff report
+        if: steps.check.outputs.changed == 'true'
+        id: diff
+        run: |
+          OLD_VERSION="${{ steps.check.outputs.old_version }}"
+          NEW_VERSION="${{ steps.check.outputs.new_version }}"
+          MODULE="github.com/radius-project/resource-types-contrib"
+
+          # Download both versions
+          if [ -n "$OLD_VERSION" ]; then
+            OLD_DIR=$(go mod download -json "${MODULE}@${OLD_VERSION}" | jq -r '.Dir')
+          fi
+          NEW_DIR=$(go mod download -json "${MODULE}@${NEW_VERSION}" | jq -r '.Dir')
+
+          # Generate diff
+          REPORT_FILE=$(mktemp)
+          {
+            echo "## Resource Types Contrib Diff Report"
+            echo ""
+            echo "\`resource-types-contrib\` dependency updated:"
+            if [ -n "$OLD_VERSION" ]; then
+              echo "- **Old**: \`${OLD_VERSION}\`"
+            else
+              echo "- **Old**: *(not present)*"
+            fi
+            echo "- **New**: \`${NEW_VERSION}\`"
+            echo ""
+
+            # Diff defaults.yaml if it exists
+            if [ -f "${NEW_DIR}/defaults.yaml" ]; then
+              if [ -n "$OLD_VERSION" ] && [ -f "${OLD_DIR}/defaults.yaml" ]; then
+                DEFAULTS_DIFF=$(diff -u "${OLD_DIR}/defaults.yaml" "${NEW_DIR}/defaults.yaml" || true)
+                if [ -n "$DEFAULTS_DIFF" ]; then
+                  echo "### defaults.yaml changes"
+                  echo ""
+                  echo '```diff'
+                  echo "$DEFAULTS_DIFF"
+                  echo '```'
+                  echo ""
+                else
+                  echo "### defaults.yaml"
+                  echo "No changes to defaults.yaml."
+                  echo ""
+                fi
+              else
+                echo "### defaults.yaml (new)"
+                echo ""
+                echo '```yaml'
+                cat "${NEW_DIR}/defaults.yaml"
+                echo '```'
+                echo ""
+              fi
+            fi
+
+            # Diff YAML manifest files
+            echo "### Manifest YAML changes"
+            echo ""
+            HAS_CHANGES=false
+
+            if [ -n "$OLD_VERSION" ]; then
+              # Find all YAML files in both versions (excluding recipes, tests, docs)
+              ALL_YAMLS=$({
+                find "$OLD_DIR" -path '*/recipes/*' -prune -o -path '*/test/*' -prune -o -name '*.yaml' -print 2>/dev/null | sed "s|${OLD_DIR}/||" || true
+                find "$NEW_DIR" -path '*/recipes/*' -prune -o -path '*/test/*' -prune -o -name '*.yaml' -print 2>/dev/null | sed "s|${NEW_DIR}/||" || true
+              } | grep -v '^defaults.yaml$' | sort -u)
+
+              for yaml_file in $ALL_YAMLS; do
+                OLD_FILE="${OLD_DIR}/${yaml_file}"
+                NEW_FILE="${NEW_DIR}/${yaml_file}"
+
+                if [ ! -f "$OLD_FILE" ] && [ -f "$NEW_FILE" ]; then
+                  echo "<details><summary>📄 <b>${yaml_file}</b> (added)</summary>"
+                  echo ""
+                  echo '```yaml'
+                  cat "$NEW_FILE"
+                  echo '```'
+                  echo "</details>"
+                  echo ""
+                  HAS_CHANGES=true
+                elif [ -f "$OLD_FILE" ] && [ ! -f "$NEW_FILE" ]; then
+                  echo "<details><summary>🗑️ <b>${yaml_file}</b> (removed)</summary></details>"
+                  echo ""
+                  HAS_CHANGES=true
+                elif [ -f "$OLD_FILE" ] && [ -f "$NEW_FILE" ]; then
+                  YAML_DIFF=$(diff -u "$OLD_FILE" "$NEW_FILE" || true)
+                  if [ -n "$YAML_DIFF" ]; then
+                    echo "<details><summary>✏️ <b>${yaml_file}</b> (modified)</summary>"
+                    echo ""
+                    echo '```diff'
+                    echo "$YAML_DIFF"
+                    echo '```'
+                    echo "</details>"
+                    echo ""
+                    HAS_CHANGES=true
+                  fi
+                fi
+              done
+            else
+              # New dependency - show all YAML files
+              ALL_YAMLS=$(find "$NEW_DIR" -path '*/recipes/*' -prune -o -path '*/test/*' -prune -o -name '*.yaml' -print 2>/dev/null | sed "s|${NEW_DIR}/||" | grep -v '^defaults.yaml$' | sort)
+              for yaml_file in $ALL_YAMLS; do
+                echo "<details><summary>📄 <b>${yaml_file}</b> (new)</summary>"
+                echo ""
+                echo '```yaml'
+                cat "${NEW_DIR}/${yaml_file}"
+                echo '```'
+                echo "</details>"
+                echo ""
+                HAS_CHANGES=true
+              done
+            fi
+
+            if [ "$HAS_CHANGES" = false ]; then
+              echo "No manifest YAML changes detected."
+            fi
+          } > "$REPORT_FILE"
+
+          # Set output (handle multiline)
+          {
+            echo "report<<DIFF_EOF"
+            cat "$REPORT_FILE"
+            echo "DIFF_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post or update PR comment
+        if: steps.check.outputs.changed == 'true'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: resource-types-diff
+          message: ${{ steps.diff.outputs.report }}
