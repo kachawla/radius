@@ -63,7 +63,7 @@ func (w *Service) Run(ctx context.Context) error {
 
 	// Process embedded manifests.
 	if w.embeddedFS != nil {
-		providers, err := manifest.RegisterFS(ctx, w.embeddedFS)
+		providers, err := manifest.LoadDefaultManifests(ctx, w.embeddedFS)
 		if err != nil {
 			return fmt.Errorf("failed to process embedded manifests: %w", err)
 		}
