@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"strings"
 
 	yaml "github.com/goccy/go-yaml"
 )
@@ -28,13 +29,15 @@ import (
 // DefaultsConfig represents the structure of the defaults.yaml configuration file
 // that lists which resource type manifests should be registered by default.
 type DefaultsConfig struct {
-	// DefaultRegistration is a list of manifest file paths to register.
+	// DefaultRegistration is a list of canonical resource type names to register.
+	// Each entry uses the format <namespace>/<typeName> (e.g., Radius.Compute/containers).
 	DefaultRegistration []string `yaml:"defaultRegistration"`
 }
 
-// RegisterFS reads defaults.yaml from the provided fs.FS, parses and validates each
-// listed manifest, merges manifests sharing a namespace into a single ResourceProvider,
-// and returns the merged providers.
+// RegisterFS reads defaults.yaml from the provided fs.FS, resolves each canonical
+// resource type name to its manifest file path, parses and validates each manifest,
+// merges manifests sharing a namespace into a single ResourceProvider, and returns
+// the merged providers.
 func RegisterFS(ctx context.Context, fsys fs.FS) ([]ResourceProvider, error) {
 	data, err := fs.ReadFile(fsys, "defaults.yaml")
 	if err != nil {
@@ -53,10 +56,15 @@ func RegisterFS(ctx context.Context, fsys fs.FS) ([]ResourceProvider, error) {
 
 	// Parse and validate each manifest, merging by namespace.
 	merged := map[string]*ResourceProvider{}
-	for _, path := range config.DefaultRegistration {
+	for _, name := range config.DefaultRegistration {
+		path, err := resolveResourceTypePath(name)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve resource type %s: %w", name, err)
+		}
+
 		manifestData, err := fs.ReadFile(fsys, path)
 		if err != nil {
-			return nil, fmt.Errorf("failed to read manifest %s listed in defaults.yaml: %w", path, err)
+			return nil, fmt.Errorf("failed to read manifest for %s (resolved to %s): %w", name, path, err)
 		}
 
 		provider, err := ReadBytes(manifestData)
@@ -83,4 +91,26 @@ func RegisterFS(ctx context.Context, fsys fs.FS) ([]ResourceProvider, error) {
 	}
 
 	return result, nil
+}
+
+// resolveResourceTypePath converts a canonical resource type name to a file path.
+// Format: Radius.<Namespace>/<typeName> -> <Namespace>/<typeName>/<typeName>.yaml
+// Example: Radius.Compute/containers -> Compute/containers/containers.yaml
+func resolveResourceTypePath(name string) (string, error) {
+	parts := strings.SplitN(name, "/", 2)
+	if len(parts) != 2 {
+		return "", fmt.Errorf("invalid resource type name %q: expected format Radius.<Namespace>/<typeName>", name)
+	}
+
+	namespace := parts[0]
+	typeName := parts[1]
+
+	if !strings.HasPrefix(namespace, "Radius.") {
+		return "", fmt.Errorf("invalid namespace %q: must start with 'Radius.'", namespace)
+	}
+
+	// Strip "Radius." prefix
+	namespaceSuffix := strings.TrimPrefix(namespace, "Radius.")
+
+	return fmt.Sprintf("%s/%s/%s.yaml", namespaceSuffix, typeName, typeName), nil
 }

@@ -58,9 +58,9 @@ types:
 		fsys := fstest.MapFS{
 			"defaults.yaml": &fstest.MapFile{
 				Data: []byte(`defaultRegistration:
-  - Compute/containers/containers.yaml
-  - Compute/routes/routes.yaml
-  - Security/secrets/secrets.yaml
+  - Radius.Compute/containers
+  - Radius.Compute/routes
+  - Radius.Security/secrets
 `),
 			},
 			"Compute/containers/containers.yaml": &fstest.MapFile{Data: []byte(validManifest1)},
@@ -118,20 +118,20 @@ types:
 		assert.Nil(t, providers)
 	})
 
-	t.Run("returns error when manifest path is missing from FS", func(t *testing.T) {
+	t.Run("returns error when manifest file is missing from FS", func(t *testing.T) {
 		t.Parallel()
 
 		fsys := fstest.MapFS{
 			"defaults.yaml": &fstest.MapFile{
 				Data: []byte(`defaultRegistration:
-  - nonexistent.yaml
+  - Radius.Compute/nonexistent
 `),
 			},
 		}
 
 		providers, err := RegisterFS(context.Background(), fsys)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to read manifest nonexistent.yaml listed in defaults.yaml")
+		assert.Contains(t, err.Error(), "failed to read manifest for Radius.Compute/nonexistent")
 		assert.Nil(t, providers)
 	})
 
@@ -141,15 +141,49 @@ types:
 		fsys := fstest.MapFS{
 			"defaults.yaml": &fstest.MapFile{
 				Data: []byte(`defaultRegistration:
-  - bad.yaml
+  - Radius.Bad/thing
 `),
 			},
-			"bad.yaml": &fstest.MapFile{Data: []byte("invalid: yaml: [")},
+			"Bad/thing/thing.yaml": &fstest.MapFile{Data: []byte("invalid: yaml: [")},
 		}
 
 		providers, err := RegisterFS(context.Background(), fsys)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to parse manifest bad.yaml")
+		assert.Contains(t, err.Error(), "failed to parse manifest")
+		assert.Nil(t, providers)
+	})
+
+	t.Run("returns error for invalid resource type name format", func(t *testing.T) {
+		t.Parallel()
+
+		fsys := fstest.MapFS{
+			"defaults.yaml": &fstest.MapFile{
+				Data: []byte(`defaultRegistration:
+  - InvalidFormat
+`),
+			},
+		}
+
+		providers, err := RegisterFS(context.Background(), fsys)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid resource type name")
+		assert.Nil(t, providers)
+	})
+
+	t.Run("returns error for non-Radius namespace", func(t *testing.T) {
+		t.Parallel()
+
+		fsys := fstest.MapFS{
+			"defaults.yaml": &fstest.MapFile{
+				Data: []byte(`defaultRegistration:
+  - Other.Compute/containers
+`),
+			},
+		}
+
+		providers, err := RegisterFS(context.Background(), fsys)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "must start with 'Radius.'")
 		assert.Nil(t, providers)
 	})
 
@@ -159,7 +193,7 @@ types:
 		fsys := fstest.MapFS{
 			"defaults.yaml": &fstest.MapFile{
 				Data: []byte(`defaultRegistration:
-  - Security/secrets/secrets.yaml
+  - Radius.Security/secrets
 `),
 			},
 			"Security/secrets/secrets.yaml": &fstest.MapFile{Data: []byte(validManifest3)},
@@ -171,4 +205,55 @@ types:
 		assert.Equal(t, "Radius.Security", providers[0].Namespace)
 		assert.Contains(t, providers[0].Types, "secrets")
 	})
+}
+
+func TestResolveResourceTypePath(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		input       string
+		expected    string
+		expectError bool
+	}{
+		{
+			name:     "standard resource type",
+			input:    "Radius.Compute/containers",
+			expected: "Compute/containers/containers.yaml",
+		},
+		{
+			name:     "nested namespace",
+			input:    "Radius.Security/secrets",
+			expected: "Security/secrets/secrets.yaml",
+		},
+		{
+			name:     "data namespace",
+			input:    "Radius.Data/mySqlDatabases",
+			expected: "Data/mySqlDatabases/mySqlDatabases.yaml",
+		},
+		{
+			name:        "missing slash",
+			input:       "Radius.Compute",
+			expectError: true,
+		},
+		{
+			name:        "non-Radius namespace",
+			input:       "Other.Compute/containers",
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			result, err := resolveResourceTypePath(tt.input)
+			if tt.expectError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.expected, result)
+			}
+		})
+	}
 }
