@@ -187,6 +187,33 @@ types:
 		assert.Nil(t, providers)
 	})
 
+	t.Run("returns error when manifest namespace does not match expected", func(t *testing.T) {
+		t.Parallel()
+
+		mismatchedManifest := `
+namespace: Radius.Other
+types:
+  containers:
+    apiVersions:
+      "2025-08-01-preview":
+        schema: {}`
+
+		fsys := fstest.MapFS{
+			"defaults.yaml": &fstest.MapFile{
+				Data: []byte(`defaultRegistration:
+  - Radius.Compute/containers
+`),
+			},
+			"Compute/containers/containers.yaml": &fstest.MapFile{Data: []byte(mismatchedManifest)},
+		}
+
+		providers, err := RegisterFS(context.Background(), fsys)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "declares namespace")
+		assert.Contains(t, err.Error(), "expected")
+		assert.Nil(t, providers)
+	})
+
 	t.Run("returns single provider without merging", func(t *testing.T) {
 		t.Parallel()
 

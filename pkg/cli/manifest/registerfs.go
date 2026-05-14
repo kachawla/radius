@@ -30,7 +30,7 @@ import (
 // that lists which resource type manifests should be registered by default.
 type DefaultsConfig struct {
 	// DefaultRegistration is a list of canonical resource type names to register.
-	// Each entry uses the format <namespace>/<typeName> (e.g., Radius.Compute/containers).
+	// Each entry uses the format Radius.<Namespace>/<typeName> (e.g., Radius.Compute/containers).
 	DefaultRegistration []string `yaml:"defaultRegistration"`
 }
 
@@ -45,7 +45,7 @@ func RegisterFS(ctx context.Context, fsys fs.FS) ([]ResourceProvider, error) {
 	}
 
 	config := DefaultsConfig{}
-	decoder := yaml.NewDecoder(bytes.NewReader(data))
+	decoder := yaml.NewDecoder(bytes.NewReader(data), yaml.Strict())
 	if err := decoder.Decode(&config); err != nil {
 		return nil, fmt.Errorf("failed to parse defaults.yaml: %w", err)
 	}
@@ -70,6 +70,14 @@ func RegisterFS(ctx context.Context, fsys fs.FS) ([]ResourceProvider, error) {
 		provider, err := ReadBytes(manifestData)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse manifest %s: %w", path, err)
+		}
+
+		// Validate the manifest namespace matches the expected namespace from the
+		// canonical resource type name (e.g., Radius.Compute/containers expects
+		// namespace Radius.Compute).
+		expectedNamespace := strings.SplitN(name, "/", 2)[0]
+		if provider.Namespace != expectedNamespace {
+			return nil, fmt.Errorf("manifest %s declares namespace %q but expected %q from defaults.yaml entry %s", path, provider.Namespace, expectedNamespace, name)
 		}
 
 		if err := validateManifestSchemas(ctx, provider); err != nil {
