@@ -33,6 +33,12 @@ import (
 )
 
 // Service implements the hosting.Service interface for registering manifests.
+// It supports two sources of manifests:
+//   - Embedded manifests from an fs.FS (typically from resource-types-contrib)
+//   - Directory-based manifests from the filesystem (configured via ManifestDirectory)
+//
+// Embedded manifests are processed first. Directory-based manifests are processed
+// second and can override embedded ones via last-write-wins semantics.
 type Service struct {
 	options    *ucp.Options
 	embeddedFS fs.FS
@@ -41,6 +47,7 @@ type Service struct {
 var _ hosting.Service = (*Service)(nil)
 
 // NewService creates a server to register manifests.
+// The embeddedFS parameter is optional; pass nil to skip embedded manifest registration.
 func NewService(options *ucp.Options, embeddedFS fs.FS) *Service {
 	return &Service{
 		options:    options,
@@ -56,12 +63,23 @@ func (s *Service) Name() string {
 func (w *Service) Run(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
+	manifestDir := w.options.Config.Initialization.ManifestDirectory
+
+	// If there's nothing to do, return early without initializing the database client.
+	if w.embeddedFS == nil && manifestDir == "" {
+		logger.Info("No embedded manifests or manifest directory specified, initialization is complete")
+		return nil
+	}
+
+	// Initialize the database client only when there is work to do.
 	dbClient, err := w.options.DatabaseProvider.GetClient(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get database client: %w", err)
 	}
 
-	// Process embedded manifests.
+	// Step 1: Process embedded manifests from the embedded filesystem.
+	// These are the default resource types from resource-types-contrib that are
+	// compiled into the Radius binary via go:embed.
 	if w.embeddedFS != nil {
 		providers, err := manifest.LoadDefaultManifests(ctx, w.embeddedFS)
 		if err != nil {
@@ -80,8 +98,12 @@ func (w *Service) Run(ctx context.Context) error {
 		}
 	}
 
-	// Process directory-based manifests.
-	manifestDir := w.options.Config.Initialization.ManifestDirectory
+	// Step 2: Process directory-based manifests from the filesystem.
+	// These are manifests that require explicit location addresses (e.g., radius_core.yaml,
+	// microsoft_resources.yaml) or are provided as overrides.
+	// Directory-based manifests are processed after embedded ones, so they can override
+	// embedded providers via last-write-wins (registerResourceProviderDirect uses Save
+	// which is a create-or-update operation).
 	if manifestDir == "" {
 		logger.Info("No manifest directory specified, initialization is complete")
 		return nil
