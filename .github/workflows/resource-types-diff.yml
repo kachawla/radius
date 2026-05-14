@@ -1,195 +1,187 @@
-# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
----
-name: Resource Types Contrib Diff Report
+# ------------------------------------------------------------
+# Copyright 2023 The Radius Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------
+
+# This workflow posts a diff report on PRs that bump the resource-types-contrib
+# dependency, showing exactly which default-registered manifest files changed.
+# This gives reviewers visibility into YAML content changes that are otherwise
+# hidden behind an opaque go.mod version bump.
+
+name: Resource Types Diff Report
 
 on:
   pull_request:
     paths:
       - 'go.mod'
-      - 'go.sum'
 
 permissions:
-  contents: read
   pull-requests: write
 
 jobs:
   diff-report:
-    name: Resource types diff report
     runs-on: ubuntu-24.04
     steps:
-      - name: Checkout PR branch
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Check if resource-types-contrib changed
-        id: check
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Detect resource-types-contrib version change
+        id: detect
         run: |
-          # Get the old and new versions of resource-types-contrib from go.mod
+          # Get the old and new versions from the go.mod diff against the PR base.
           OLD_VERSION=$(git show ${{ github.event.pull_request.base.sha }}:go.mod | grep 'github.com/radius-project/resource-types-contrib' | awk '{print $2}' || true)
           NEW_VERSION=$(grep 'github.com/radius-project/resource-types-contrib' go.mod | awk '{print $2}' || true)
 
           if [ -z "$OLD_VERSION" ] && [ -z "$NEW_VERSION" ]; then
-            echo "resource-types-contrib not found in go.mod"
-            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "resource-types-contrib dependency not found in go.mod"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           if [ "$OLD_VERSION" = "$NEW_VERSION" ]; then
             echo "resource-types-contrib version unchanged ($OLD_VERSION)"
-            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          echo "old_version=$OLD_VERSION" >> "$GITHUB_OUTPUT"
-          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
-          echo "changed=true" >> "$GITHUB_OUTPUT"
-          echo "resource-types-contrib changed: $OLD_VERSION -> $NEW_VERSION"
+          echo "Old version: $OLD_VERSION"
+          echo "New version: $NEW_VERSION"
+          echo "old=$OLD_VERSION" >> "$GITHUB_OUTPUT"
+          echo "new=$NEW_VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Setup Go
-        if: steps.check.outputs.changed == 'true'
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
-        with:
-          go-version-file: 'go.mod'
-
-      - name: Generate diff report
-        if: steps.check.outputs.changed == 'true'
+      - name: Generate diff of default manifests
+        if: steps.detect.outputs.skip != 'true'
         id: diff
         run: |
-          OLD_VERSION="${{ steps.check.outputs.old_version }}"
-          NEW_VERSION="${{ steps.check.outputs.new_version }}"
+          OLD_VERSION="${{ steps.detect.outputs.old }}"
+          NEW_VERSION="${{ steps.detect.outputs.new }}"
           MODULE="github.com/radius-project/resource-types-contrib"
 
-          # Download both versions
+          # Download both versions and get their local paths.
+          OLD_DIR=""
           if [ -n "$OLD_VERSION" ]; then
             OLD_DIR=$(go mod download -json "${MODULE}@${OLD_VERSION}" | jq -r '.Dir')
           fi
           NEW_DIR=$(go mod download -json "${MODULE}@${NEW_VERSION}" | jq -r '.Dir')
 
-          # Generate diff
-          REPORT_FILE=$(mktemp)
-          {
-            echo "## Resource Types Contrib Diff Report"
-            echo ""
-            echo "\`resource-types-contrib\` dependency updated:"
-            if [ -n "$OLD_VERSION" ]; then
-              echo "- **Old**: \`${OLD_VERSION}\`"
-            else
-              echo "- **Old**: *(not present)*"
-            fi
-            echo "- **New**: \`${NEW_VERSION}\`"
-            echo ""
-
-            # Diff defaults.yaml if it exists
-            if [ -f "${NEW_DIR}/defaults.yaml" ]; then
-              if [ -n "$OLD_VERSION" ] && [ -f "${OLD_DIR}/defaults.yaml" ]; then
-                DEFAULTS_DIFF=$(diff -u "${OLD_DIR}/defaults.yaml" "${NEW_DIR}/defaults.yaml" || true)
-                if [ -n "$DEFAULTS_DIFF" ]; then
-                  echo "### defaults.yaml changes"
-                  echo ""
-                  echo '```diff'
-                  echo "$DEFAULTS_DIFF"
-                  echo '```'
-                  echo ""
-                else
-                  echo "### defaults.yaml"
-                  echo "No changes to defaults.yaml."
-                  echo ""
-                fi
-              else
-                echo "### defaults.yaml (new)"
-                echo ""
-                echo '```yaml'
-                cat "${NEW_DIR}/defaults.yaml"
-                echo '```'
-                echo ""
-              fi
-            fi
-
-            # Diff YAML manifest files
-            echo "### Manifest YAML changes"
-            echo ""
-            HAS_CHANGES=false
-
-            if [ -n "$OLD_VERSION" ]; then
-              # Find all YAML files in both versions (excluding recipes, tests, docs)
-              ALL_YAMLS=$({
-                find "$OLD_DIR" -path '*/recipes/*' -prune -o -path '*/test/*' -prune -o -path '*/docs/*' -prune -o -name '*.yaml' -print 2>/dev/null | sed "s|${OLD_DIR}/||" || true
-                find "$NEW_DIR" -path '*/recipes/*' -prune -o -path '*/test/*' -prune -o -path '*/docs/*' -prune -o -name '*.yaml' -print 2>/dev/null | sed "s|${NEW_DIR}/||" || true
-              } | grep -v '^defaults.yaml$' | sort -u)
-
-              for yaml_file in $ALL_YAMLS; do
-                OLD_FILE="${OLD_DIR}/${yaml_file}"
-                NEW_FILE="${NEW_DIR}/${yaml_file}"
-
-                if [ ! -f "$OLD_FILE" ] && [ -f "$NEW_FILE" ]; then
-                  echo "<details><summary>Added: <b>${yaml_file}</b></summary>"
-                  echo ""
-                  echo '```yaml'
-                  head -c 10000 "$NEW_FILE"
-                  echo '```'
-                  echo "</details>"
-                  echo ""
-                  HAS_CHANGES=true
-                elif [ -f "$OLD_FILE" ] && [ ! -f "$NEW_FILE" ]; then
-                  echo "<details><summary>Removed: <b>${yaml_file}</b></summary></details>"
-                  echo ""
-                  HAS_CHANGES=true
-                elif [ -f "$OLD_FILE" ] && [ -f "$NEW_FILE" ]; then
-                  YAML_DIFF=$(diff -u "$OLD_FILE" "$NEW_FILE" || true)
-                  if [ -n "$YAML_DIFF" ]; then
-                    echo "<details><summary>Modified: <b>${yaml_file}</b></summary>"
-                    echo ""
-                    echo '```diff'
-                    echo "$YAML_DIFF" | head -200
-                    echo '```'
-                    echo "</details>"
-                    echo ""
-                    HAS_CHANGES=true
-                  fi
-                fi
-              done
-            else
-              # New dependency - show all YAML files
-              ALL_YAMLS=$(find "$NEW_DIR" -path '*/recipes/*' -prune -o -path '*/test/*' -prune -o -path '*/docs/*' -prune -o -name '*.yaml' -print 2>/dev/null | sed "s|${NEW_DIR}/||" | grep -v '^defaults.yaml$' | sort)
-              for yaml_file in $ALL_YAMLS; do
-                echo "<details><summary>Added: <b>${yaml_file}</b></summary>"
-                echo ""
-                echo '```yaml'
-                head -c 10000 "${NEW_DIR}/${yaml_file}"
-                echo '```'
-                echo "</details>"
-                echo ""
-                HAS_CHANGES=true
-              done
-            fi
-
-            if [ "$HAS_CHANGES" = false ]; then
-              echo "No manifest YAML changes detected."
-            fi
-          } > "$REPORT_FILE"
-
-          # Truncate if too large for PR comment (GitHub limit is 65536 chars)
-          if [ $(wc -c < "$REPORT_FILE") -gt 60000 ]; then
-            head -c 59000 "$REPORT_FILE" > "${REPORT_FILE}.truncated"
-            echo "" >> "${REPORT_FILE}.truncated"
-            echo "---" >> "${REPORT_FILE}.truncated"
-            echo "*Report truncated. Full diff available in the [resource-types-contrib repository](https://github.com/radius-project/resource-types-contrib).*" >> "${REPORT_FILE}.truncated"
-            mv "${REPORT_FILE}.truncated" "$REPORT_FILE"
+          # Read the list of default resource types from defaults.yaml in both versions.
+          # We diff only files listed in defaults.yaml (the authoritative list of what
+          # gets embedded into the Radius binary), not the entire module.
+          OLD_FILES=""
+          NEW_FILES=""
+          if [ -n "$OLD_DIR" ] && [ -f "$OLD_DIR/defaults.yaml" ]; then
+            OLD_FILES=$(yq '.defaultRegistration[]' "$OLD_DIR/defaults.yaml" 2>/dev/null || echo "")
+          fi
+          if [ -f "$NEW_DIR/defaults.yaml" ]; then
+            NEW_FILES=$(yq '.defaultRegistration[]' "$NEW_DIR/defaults.yaml" 2>/dev/null || echo "")
           fi
 
-          # Set output (handle multiline)
-          {
-            echo "report<<DIFF_EOF"
-            cat "$REPORT_FILE"
-            echo "DIFF_EOF"
-          } >> "$GITHUB_OUTPUT"
+          ALL_FILES=$(echo -e "${OLD_FILES}\n${NEW_FILES}" | sort -u | grep -v '^$' || true)
 
-      - name: Post or update PR comment
-        if: steps.check.outputs.changed == 'true'
+          if [ -z "$ALL_FILES" ]; then
+            echo "No default manifests found in defaults.yaml"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Build the diff report.
+          DIFF_OUTPUT=""
+
+          # Check if defaults.yaml itself changed.
+          if [ -n "$OLD_DIR" ] && [ -f "$OLD_DIR/defaults.yaml" ] && [ -f "$NEW_DIR/defaults.yaml" ]; then
+            DEFAULTS_DIFF=$(diff -u "$OLD_DIR/defaults.yaml" "$NEW_DIR/defaults.yaml" || true)
+            if [ -n "$DEFAULTS_DIFF" ]; then
+              DIFF_OUTPUT+="### Changed: \`defaults.yaml\`"$'\n'
+              DIFF_OUTPUT+='```diff'$'\n'
+              DIFF_OUTPUT+="$DEFAULTS_DIFF"$'\n'
+              DIFF_OUTPUT+='```'$'\n\n'
+            fi
+          elif [ -z "$OLD_DIR" ] && [ -f "$NEW_DIR/defaults.yaml" ]; then
+            DIFF_OUTPUT+="### Added: \`defaults.yaml\`"$'\n'
+            DIFF_OUTPUT+='```yaml'$'\n'
+            DIFF_OUTPUT+=$(cat "$NEW_DIR/defaults.yaml")$'\n'
+            DIFF_OUTPUT+='```'$'\n\n'
+          fi
+
+          # Diff each default-registered manifest file.
+          for entry in $ALL_FILES; do
+            # Resolve resource type name to file path.
+            # Format: Radius.<Namespace>/<typeName> -> <Namespace>/<typeName>/<typeName>.yaml
+            NAMESPACE_SUFFIX=$(echo "$entry" | cut -d'/' -f1 | sed 's/^Radius\.//')
+            TYPE_NAME=$(echo "$entry" | cut -d'/' -f2)
+            file="${NAMESPACE_SUFFIX}/${TYPE_NAME}/${TYPE_NAME}.yaml"
+
+            OLD_FILE=""
+            if [ -n "$OLD_DIR" ]; then
+              OLD_FILE="$OLD_DIR/$file"
+            fi
+            NEW_FILE="$NEW_DIR/$file"
+
+            if [ -z "$OLD_FILE" ] || [ ! -f "$OLD_FILE" ]; then
+              if [ -f "$NEW_FILE" ]; then
+                DIFF_OUTPUT+="### Added: \`$file\`"$'\n'
+                DIFF_OUTPUT+='```yaml'$'\n'
+                DIFF_OUTPUT+=$(head -c 10000 "$NEW_FILE")$'\n'
+                DIFF_OUTPUT+='```'$'\n\n'
+              fi
+            elif [ -f "$OLD_FILE" ] && [ ! -f "$NEW_FILE" ]; then
+              DIFF_OUTPUT+="### Removed: \`$file\`"$'\n\n'
+            elif [ -f "$OLD_FILE" ] && [ -f "$NEW_FILE" ]; then
+              FILE_DIFF=$(diff -u "$OLD_FILE" "$NEW_FILE" || true)
+              if [ -n "$FILE_DIFF" ]; then
+                DIFF_OUTPUT+="### Changed: \`$file\`"$'\n'
+                DIFF_OUTPUT+='```diff'$'\n'
+                DIFF_OUTPUT+=$(echo "$FILE_DIFF" | head -200)$'\n'
+                DIFF_OUTPUT+='```'$'\n\n'
+              fi
+            fi
+          done
+
+          if [ -z "$DIFF_OUTPUT" ]; then
+            DIFF_OUTPUT="No changes to default-registered manifest files."
+          fi
+
+          # Write the full report.
+          {
+            echo "## Resource Types Diff Report"
+            echo ""
+            echo "Changes in default-registered manifests between \`${OLD_VERSION:-*(new dependency)*}\` and \`${NEW_VERSION}\`:"
+            echo ""
+            echo "$DIFF_OUTPUT"
+            echo "---"
+            echo "<sub>This report shows only files listed in <code>defaults.yaml</code>. Generated automatically by the resource-types-diff workflow.</sub>"
+          } > /tmp/diff-report.md
+
+          # Truncate if too large for PR comment (GitHub limit is 65536 chars).
+          if [ $(wc -c < /tmp/diff-report.md) -gt 60000 ]; then
+            head -c 59000 /tmp/diff-report.md > /tmp/diff-report-truncated.md
+            echo "" >> /tmp/diff-report-truncated.md
+            echo "---" >> /tmp/diff-report-truncated.md
+            echo "*Report truncated. See [resource-types-contrib](https://github.com/radius-project/resource-types-contrib) for the full diff.*" >> /tmp/diff-report-truncated.md
+            mv /tmp/diff-report-truncated.md /tmp/diff-report.md
+          fi
+
+      - name: Post PR comment
+        if: steps.detect.outputs.skip != 'true' && steps.diff.outputs.skip != 'true'
         continue-on-error: true
         uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         with:
           header: resource-types-diff
-          message: ${{ steps.diff.outputs.report }}
+          path: /tmp/diff-report.md
