@@ -29,12 +29,12 @@ import (
 // DefaultsConfig represents the structure of the defaults.yaml configuration file
 // that lists which resource type manifests should be registered by default.
 type DefaultsConfig struct {
-	// DefaultRegistration is a list of canonical resource type names to register.
+	// DefaultRegistration is a list of resource type names to register.
 	// Each entry uses the format Radius.<Namespace>/<typeName> (e.g., Radius.Compute/containers).
 	DefaultRegistration []string `yaml:"defaultRegistration"`
 }
 
-// RegisterFS reads defaults.yaml from the provided fs.FS, resolves each canonical
+// RegisterFS reads defaults.yaml from the provided fs.FS, resolves each
 // resource type name to its manifest file path, parses and validates each manifest,
 // merges manifests sharing a namespace into a single ResourceProvider, and returns
 // the merged providers.
