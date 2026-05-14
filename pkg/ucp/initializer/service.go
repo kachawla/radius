@@ -81,7 +81,7 @@ func (w *Service) Run(ctx context.Context) error {
 	// These are the default resource types from resource-types-contrib that are
 	// compiled into the Radius binary via go:embed.
 	if w.embeddedFS != nil {
-		providers, err := manifest.LoadDefaultManifests(ctx, w.embeddedFS)
+		providers, err := manifest.RegisterFS(ctx, w.embeddedFS)
 		if err != nil {
 			return fmt.Errorf("failed to process embedded manifests: %w", err)
 		}
