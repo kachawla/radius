@@ -214,6 +214,34 @@ types:
 		assert.Nil(t, providers)
 	})
 
+	t.Run("returns error when manifest does not define expected type", func(t *testing.T) {
+		t.Parallel()
+
+		// Manifest declares Radius.Compute namespace but only has 'routes', not 'containers'
+		wrongTypeManifest := `
+namespace: Radius.Compute
+types:
+  routes:
+    apiVersions:
+      "2025-08-01-preview":
+        schema: {}`
+
+		fsys := fstest.MapFS{
+			"defaults.yaml": &fstest.MapFile{
+				Data: []byte(`defaultRegistration:
+  - Radius.Compute/containers
+`),
+			},
+			"Compute/containers/containers.yaml": &fstest.MapFile{Data: []byte(wrongTypeManifest)},
+		}
+
+		providers, err := RegisterFS(context.Background(), fsys)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "does not define resource type")
+		assert.Contains(t, err.Error(), "containers")
+		assert.Nil(t, providers)
+	})
+
 	t.Run("returns single provider without merging", func(t *testing.T) {
 		t.Parallel()
 

@@ -45,8 +45,10 @@ type DefaultsConfig struct {
 //  3. Reads and parses each manifest using the existing ReadBytes function.
 //  4. Validates that the manifest's namespace matches the expected namespace
 //     derived from the resource type name.
-//  5. Validates schemas using the existing validateManifestSchemas function.
-//  6. Merges manifests sharing a namespace into a single ResourceProvider
+//  5. Validates that the manifest contains the expected resource type in its
+//     types map.
+//  6. Validates schemas using the existing validateManifestSchemas function.
+//  7. Merges manifests sharing a namespace into a single ResourceProvider
 //     (e.g., three Radius.Compute manifests become one provider with all types).
 //
 // Returns nil, nil if defaults.yaml has no entries. Returns an error if any step
@@ -94,9 +96,17 @@ func RegisterFS(ctx context.Context, fsys fs.FS) ([]ResourceProvider, error) {
 		// Validate the manifest namespace matches the expected namespace from the
 		// resource type name (e.g., Radius.Compute/containers expects
 		// namespace Radius.Compute).
-		expectedNamespace := strings.SplitN(name, "/", 2)[0]
+		parts := strings.SplitN(name, "/", 2)
+		expectedNamespace := parts[0]
+		expectedTypeName := parts[1]
+
 		if provider.Namespace != expectedNamespace {
 			return nil, fmt.Errorf("manifest %s declares namespace %q but expected %q from defaults.yaml entry %s", path, provider.Namespace, expectedNamespace, name)
+		}
+
+		// Validate the manifest contains the expected resource type.
+		if _, ok := provider.Types[expectedTypeName]; !ok {
+			return nil, fmt.Errorf("manifest %s does not define resource type %q listed in defaults.yaml entry %s", path, expectedTypeName, name)
 		}
 
 		// Validate the manifest schemas against OpenAPI format.
