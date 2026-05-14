@@ -25,7 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRegisterFS(t *testing.T) {
+func TestLoadDefaultManifests(t *testing.T) {
 	t.Parallel()
 
 	validManifest1 := `
@@ -68,7 +68,7 @@ types:
 			"Security/secrets/secrets.yaml":       &fstest.MapFile{Data: []byte(validManifest3)},
 		}
 
-		providers, err := RegisterFS(context.Background(), fsys)
+		providers, err := LoadDefaultManifests(context.Background(), fsys)
 		require.NoError(t, err)
 		require.Len(t, providers, 2)
 
@@ -98,7 +98,7 @@ types:
 
 		fsys := fstest.MapFS{}
 
-		providers, err := RegisterFS(context.Background(), fsys)
+		providers, err := LoadDefaultManifests(context.Background(), fsys)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to read defaults.yaml")
 		assert.Nil(t, providers)
@@ -113,7 +113,7 @@ types:
 			},
 		}
 
-		providers, err := RegisterFS(context.Background(), fsys)
+		providers, err := LoadDefaultManifests(context.Background(), fsys)
 		require.NoError(t, err)
 		assert.Nil(t, providers)
 	})
@@ -129,7 +129,7 @@ types:
 			},
 		}
 
-		providers, err := RegisterFS(context.Background(), fsys)
+		providers, err := LoadDefaultManifests(context.Background(), fsys)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to read manifest for Radius.Compute/nonexistent")
 		assert.Nil(t, providers)
@@ -147,7 +147,7 @@ types:
 			"Bad/thing/thing.yaml": &fstest.MapFile{Data: []byte("invalid: yaml: [")},
 		}
 
-		providers, err := RegisterFS(context.Background(), fsys)
+		providers, err := LoadDefaultManifests(context.Background(), fsys)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to parse manifest")
 		assert.Nil(t, providers)
@@ -164,7 +164,7 @@ types:
 			},
 		}
 
-		providers, err := RegisterFS(context.Background(), fsys)
+		providers, err := LoadDefaultManifests(context.Background(), fsys)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid resource type name")
 		assert.Nil(t, providers)
@@ -181,7 +181,7 @@ types:
 			},
 		}
 
-		providers, err := RegisterFS(context.Background(), fsys)
+		providers, err := LoadDefaultManifests(context.Background(), fsys)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "must start with 'Radius.'")
 		assert.Nil(t, providers)
@@ -207,7 +207,7 @@ types:
 			"Compute/containers/containers.yaml": &fstest.MapFile{Data: []byte(mismatchedManifest)},
 		}
 
-		providers, err := RegisterFS(context.Background(), fsys)
+		providers, err := LoadDefaultManifests(context.Background(), fsys)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "declares namespace")
 		assert.Contains(t, err.Error(), "expected")
@@ -235,7 +235,7 @@ types:
 			"Compute/containers/containers.yaml": &fstest.MapFile{Data: []byte(wrongTypeManifest)},
 		}
 
-		providers, err := RegisterFS(context.Background(), fsys)
+		providers, err := LoadDefaultManifests(context.Background(), fsys)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "does not define resource type")
 		assert.Contains(t, err.Error(), "containers")
@@ -254,7 +254,7 @@ types:
 			"Security/secrets/secrets.yaml": &fstest.MapFile{Data: []byte(validManifest3)},
 		}
 
-		providers, err := RegisterFS(context.Background(), fsys)
+		providers, err := LoadDefaultManifests(context.Background(), fsys)
 		require.NoError(t, err)
 		require.Len(t, providers, 1)
 		assert.Equal(t, "Radius.Security", providers[0].Namespace)

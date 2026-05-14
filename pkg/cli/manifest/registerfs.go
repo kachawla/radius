@@ -34,8 +34,8 @@ type DefaultsConfig struct {
 	DefaultRegistration []string `yaml:"defaultRegistration"`
 }
 
-// RegisterFS reads defaults.yaml from the provided fs.FS and returns the parsed,
-// validated, and merged resource providers for default registration.
+// LoadDefaultManifests reads defaults.yaml from the provided fs.FS and returns the
+// parsed, validated, and merged resource providers for default registration.
 //
 // The function performs the following steps:
 //  1. Reads defaults.yaml from the embedded filesystem to get the list of resource
@@ -53,7 +53,7 @@ type DefaultsConfig struct {
 //
 // Returns nil, nil if defaults.yaml has no entries. Returns an error if any step
 // fails (missing files, parse errors, validation failures, namespace mismatches).
-func RegisterFS(ctx context.Context, fsys fs.FS) ([]ResourceProvider, error) {
+func LoadDefaultManifests(ctx context.Context, fsys fs.FS) ([]ResourceProvider, error) {
 	// Read the defaults configuration that lists which resource types to register.
 	data, err := fs.ReadFile(fsys, "defaults.yaml")
 	if err != nil {
