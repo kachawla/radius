@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
 ---
-name: 'Resource Types Contrib Diff Report'
+name: Resource Types Contrib Diff Report
 
 on:
   pull_request:
@@ -15,18 +15,19 @@ permissions:
 jobs:
   diff-report:
     name: Resource types diff report
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout PR branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Check if resource-types-contrib changed
         id: check
         run: |
           # Get the old and new versions of resource-types-contrib from go.mod
-          OLD_VERSION=$(git show origin/${{ github.base_ref }}:go.mod | grep 'github.com/radius-project/resource-types-contrib' | awk '{print $2}' || true)
+          OLD_VERSION=$(git show ${{ github.event.pull_request.base.sha }}:go.mod | grep 'github.com/radius-project/resource-types-contrib' | awk '{print $2}' || true)
           NEW_VERSION=$(grep 'github.com/radius-project/resource-types-contrib' go.mod | awk '{print $2}' || true)
 
           if [ -z "$OLD_VERSION" ] && [ -z "$NEW_VERSION" ]; then
@@ -48,7 +49,7 @@ jobs:
 
       - name: Setup Go
         if: steps.check.outputs.changed == 'true'
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version-file: 'go.mod'
 
@@ -114,8 +115,8 @@ jobs:
             if [ -n "$OLD_VERSION" ]; then
               # Find all YAML files in both versions (excluding recipes, tests, docs)
               ALL_YAMLS=$({
-                find "$OLD_DIR" -path '*/recipes/*' -prune -o -path '*/test/*' -prune -o -name '*.yaml' -print 2>/dev/null | sed "s|${OLD_DIR}/||" || true
-                find "$NEW_DIR" -path '*/recipes/*' -prune -o -path '*/test/*' -prune -o -name '*.yaml' -print 2>/dev/null | sed "s|${NEW_DIR}/||" || true
+                find "$OLD_DIR" -path '*/recipes/*' -prune -o -path '*/test/*' -prune -o -path '*/docs/*' -prune -o -name '*.yaml' -print 2>/dev/null | sed "s|${OLD_DIR}/||" || true
+                find "$NEW_DIR" -path '*/recipes/*' -prune -o -path '*/test/*' -prune -o -path '*/docs/*' -prune -o -name '*.yaml' -print 2>/dev/null | sed "s|${NEW_DIR}/||" || true
               } | grep -v '^defaults.yaml$' | sort -u)
 
               for yaml_file in $ALL_YAMLS; do
@@ -123,25 +124,25 @@ jobs:
                 NEW_FILE="${NEW_DIR}/${yaml_file}"
 
                 if [ ! -f "$OLD_FILE" ] && [ -f "$NEW_FILE" ]; then
-                  echo "<details><summary>📄 <b>${yaml_file}</b> (added)</summary>"
+                  echo "<details><summary>Added: <b>${yaml_file}</b></summary>"
                   echo ""
                   echo '```yaml'
-                  cat "$NEW_FILE"
+                  head -c 10000 "$NEW_FILE"
                   echo '```'
                   echo "</details>"
                   echo ""
                   HAS_CHANGES=true
                 elif [ -f "$OLD_FILE" ] && [ ! -f "$NEW_FILE" ]; then
-                  echo "<details><summary>🗑️ <b>${yaml_file}</b> (removed)</summary></details>"
+                  echo "<details><summary>Removed: <b>${yaml_file}</b></summary></details>"
                   echo ""
                   HAS_CHANGES=true
                 elif [ -f "$OLD_FILE" ] && [ -f "$NEW_FILE" ]; then
                   YAML_DIFF=$(diff -u "$OLD_FILE" "$NEW_FILE" || true)
                   if [ -n "$YAML_DIFF" ]; then
-                    echo "<details><summary>✏️ <b>${yaml_file}</b> (modified)</summary>"
+                    echo "<details><summary>Modified: <b>${yaml_file}</b></summary>"
                     echo ""
                     echo '```diff'
-                    echo "$YAML_DIFF"
+                    echo "$YAML_DIFF" | head -200
                     echo '```'
                     echo "</details>"
                     echo ""
@@ -151,12 +152,12 @@ jobs:
               done
             else
               # New dependency - show all YAML files
-              ALL_YAMLS=$(find "$NEW_DIR" -path '*/recipes/*' -prune -o -path '*/test/*' -prune -o -name '*.yaml' -print 2>/dev/null | sed "s|${NEW_DIR}/||" | grep -v '^defaults.yaml$' | sort)
+              ALL_YAMLS=$(find "$NEW_DIR" -path '*/recipes/*' -prune -o -path '*/test/*' -prune -o -path '*/docs/*' -prune -o -name '*.yaml' -print 2>/dev/null | sed "s|${NEW_DIR}/||" | grep -v '^defaults.yaml$' | sort)
               for yaml_file in $ALL_YAMLS; do
-                echo "<details><summary>📄 <b>${yaml_file}</b> (new)</summary>"
+                echo "<details><summary>Added: <b>${yaml_file}</b></summary>"
                 echo ""
                 echo '```yaml'
-                cat "${NEW_DIR}/${yaml_file}"
+                head -c 10000 "${NEW_DIR}/${yaml_file}"
                 echo '```'
                 echo "</details>"
                 echo ""
@@ -169,6 +170,15 @@ jobs:
             fi
           } > "$REPORT_FILE"
 
+          # Truncate if too large for PR comment (GitHub limit is 65536 chars)
+          if [ $(wc -c < "$REPORT_FILE") -gt 60000 ]; then
+            head -c 59000 "$REPORT_FILE" > "${REPORT_FILE}.truncated"
+            echo "" >> "${REPORT_FILE}.truncated"
+            echo "---" >> "${REPORT_FILE}.truncated"
+            echo "*Report truncated. Full diff available in the [resource-types-contrib repository](https://github.com/radius-project/resource-types-contrib).*" >> "${REPORT_FILE}.truncated"
+            mv "${REPORT_FILE}.truncated" "$REPORT_FILE"
+          fi
+
           # Set output (handle multiline)
           {
             echo "report<<DIFF_EOF"
@@ -178,7 +188,8 @@ jobs:
 
       - name: Post or update PR comment
         if: steps.check.outputs.changed == 'true'
-        uses: marocchino/sticky-pull-request-comment@v2
+        continue-on-error: true
+        uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         with:
           header: resource-types-diff
           message: ${{ steps.diff.outputs.report }}
