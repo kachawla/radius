@@ -84,12 +84,16 @@ jobs:
           echo "Contrib ref: ${ref}"
 
       - name: Checkout
+        # Uses GH_RAD_CI_BOT_PAT instead of the default GITHUB_TOKEN so that
+        # the bot can push the PR branch and the resulting PR triggers CI checks.
+        # The default GITHUB_TOKEN cannot trigger workflows on pushes it creates.
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           persist-credentials: true
 
       - name: Set up Git identity
+        # Configure git author for the automated commit on the PR branch.
         run: |
           git config user.name "Radius CI Bot"
           git config user.email "radiuscoreteam@service.microsoft.com"
@@ -124,9 +128,10 @@ jobs:
           make update-resource-types
 
       - name: Detect changes
-        # Check for any working tree changes including untracked files.
-        # make update-resource-types may create new manifest files when new types
-        # are added to defaults.yaml, so git diff alone is not sufficient.
+        # Uses git status --porcelain (not git diff --quiet) because
+        # make update-resource-types may create new untracked files when new
+        # resource types are added to defaults.yaml. git diff only detects
+        # modifications to already-tracked files.
         id: changes
         run: |
           set -euo pipefail
@@ -138,6 +143,9 @@ jobs:
           fi
 
       - name: Create or update PR branch
+        # Force-pushes to the bot branch so that if a previous automated PR is
+        # still open, its content is replaced with the latest manifests rather
+        # than accumulating stale commits.
         if: steps.changes.outputs.changed == 'true'
         env:
           CONTRIB_REF: ${{ steps.contrib.outputs.ref }}
@@ -149,6 +157,9 @@ jobs:
           git push --force origin "${PR_BRANCH}"
 
       - name: Open or update pull request
+        # Creates a new PR if none exists for the bot branch, or updates the
+        # existing one's title and body. Uses github-script because we need
+        # conditional create-or-update logic that gh pr create doesn't support.
         if: steps.changes.outputs.changed == 'true'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
