@@ -64,7 +64,9 @@ jobs:
       - name: Resolve contrib ref
         # Extracts the contrib commit SHA from either the dispatch payload or
         # workflow_dispatch input. Validates it as a hex SHA to prevent injection.
-        # Falls back to "main" if not provided.
+        # Falls back to "main" if not provided. Note: this value is informational
+        # only (used in commit messages and PR body). The actual version fetched
+        # is determined by 'make update-resource-types' which runs 'go get ...@latest'.
         id: contrib
         env:
           DISPATCH_REF: ${{ github.event.client_payload.contrib_ref }}
@@ -122,10 +124,13 @@ jobs:
           make update-resource-types
 
       - name: Detect changes
+        # Check for any working tree changes including untracked files.
+        # make update-resource-types may create new manifest files when new types
+        # are added to defaults.yaml, so git diff alone is not sufficient.
         id: changes
         run: |
           set -euo pipefail
-          if git diff --quiet; then
+          if [ -z "$(git status --porcelain)" ]; then
             echo "changed=false" >> "${GITHUB_OUTPUT}"
             echo "No changes from 'make update-resource-types'; nothing to do."
           else
