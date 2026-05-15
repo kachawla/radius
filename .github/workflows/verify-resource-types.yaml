@@ -31,7 +31,7 @@
 #   - Manual edits to copied manifest files that drift from upstream
 #   - New entries in defaults.yaml without re-syncing
 #
-# Similar in spirit to the "go mod tidy" check — ensuring generated/copied
+# Similar in spirit to the "go mod tidy" check, ensuring generated/copied
 # artifacts are consistent with their source.
 
 name: Verify resource type manifests

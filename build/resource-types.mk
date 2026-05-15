@@ -18,7 +18,7 @@
 # manifests from the resource-types-contrib repository.
 #
 # resource-types-contrib is added to go.mod as a Go module dependency. It
-# contains no executable Go code — we depend on it purely to leverage Go's
+# contains no executable Go code. We depend on it purely to leverage Go's
 # module system for versioned downloads of YAML manifest files.
 #
 # A blank import in pkg/resourcetypescontrib/import.go keeps go mod tidy from
@@ -26,7 +26,7 @@
 #
 # How it works:
 #   1. defaults.yaml lists which resource types to ship as defaults, using
-#      canonical <namespace>/<typeName> names (e.g. Radius.Compute/containers).
+#      <namespace>/<typeName> names (e.g. Radius.Compute/containers).
 #   2. Each entry is resolved to a file path in the Go module cache:
 #        Radius.Compute/containers → Compute/containers/containers.yaml
 #      (strip "Radius." prefix, then <namespace>/<typeName>/<typeName>.yaml)
@@ -49,17 +49,17 @@ DEFAULTS_YAML := deploy/manifest/defaults.yaml
 # same set of files; dev/ is used for local development (endpoints point to
 # localhost) and self-hosted/ is used for Kubernetes deployments.
 # Note: The copied manifests themselves have no "location" field. The location
-# is only present in the hand-maintained files (radius_core.yaml, etc.).
+# is only present in the manually maintained files (radius_core.yaml, etc.).
 MANIFEST_DEST_DIRS := deploy/manifest/built-in-providers/dev deploy/manifest/built-in-providers/self-hosted
 
 # The Go module path for resource-types-contrib.
 RESOURCE_TYPES_MODULE := github.com/radius-project/resource-types-contrib
 
-# Files in the manifest destination directories that are hand-maintained and
-# should NOT be managed (created or deleted) by the sync target. These are
+# Files in the manifest destination directories that are manually maintained
+# and should NOT be managed (created or deleted) by the sync target. These are
 # resource providers that require explicit location addresses and are not
 # sourced from resource-types-contrib.
-HAND_MAINTAINED_MANIFESTS := applications_core.yaml applications_dapr.yaml applications_datastores.yaml applications_messaging.yaml microsoft_resources.yaml radius_core.yaml
+MANUAL_CORE_MANIFESTS := applications_core.yaml applications_dapr.yaml applications_datastores.yaml applications_messaging.yaml microsoft_resources.yaml radius_core.yaml
 
 ##@ Resource Types
 
@@ -88,7 +88,7 @@ sync-resource-types: ## Copy manifest files listed in defaults.yaml from the pin
 	# Iterate over each entry in defaults.yaml and copy the corresponding YAML
 	# file from the module cache into the manifest destination directories.
 	for entry in $$(yq '.defaultRegistration[]' $(DEFAULTS_YAML)); do \
-		# Convert canonical name to a relative path inside the module.
+		# Convert the resource type name to a relative path inside the module.
 		# Example: Radius.Compute/containers → Compute/containers
 		rel_path=$$(echo "$$entry" | sed 's/^Radius\.//') && \
 		# Extract the type name (second path component).
@@ -108,7 +108,7 @@ sync-resource-types: ## Copy manifest files listed in defaults.yaml from the pin
 		echo "  Copied $$entry"; \
 	done
 	# Remove stale managed files: any YAML in the destination directories that
-	# is NOT hand-maintained and NOT in the current defaults.yaml list. This
+	# is NOT in MANUAL_CORE_MANIFESTS and NOT in the current defaults.yaml list. This
 	# prevents previously-copied manifests from remaining registered after their
 	# entry is removed from defaults.yaml.
 	@EXPECTED_FILES="" && \
@@ -120,11 +120,11 @@ sync-resource-types: ## Copy manifest files listed in defaults.yaml from the pin
 	for dest_dir in $(MANIFEST_DEST_DIRS); do \
 		for file in "$$dest_dir"/*.yaml; do \
 			basename=$$(basename "$$file") && \
-			is_hand_maintained=false && \
-			for hm in $(HAND_MAINTAINED_MANIFESTS); do \
-				if [ "$$basename" = "$$hm" ]; then is_hand_maintained=true; break; fi; \
+			is_manual=false && \
+			for mc in $(MANUAL_CORE_MANIFESTS); do \
+				if [ "$$basename" = "$$mc" ]; then is_manual=true; break; fi; \
 			done && \
-			if [ "$$is_hand_maintained" = "true" ]; then continue; fi && \
+			if [ "$$is_manual" = "true" ]; then continue; fi && \
 			is_expected=false && \
 			for ef in $$EXPECTED_FILES; do \
 				if [ "$$basename" = "$$ef" ]; then is_expected=true; break; fi; \

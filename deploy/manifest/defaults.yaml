@@ -1,6 +1,6 @@
 # defaults.yaml lists the resource types from resource-types-contrib that ship
-# as defaults in Radius. Each entry uses the canonical <namespace>/<typeName>
-# format and is resolved to a file path in the resource-types-contrib module
+# as defaults in Radius. Each entry uses the <namespace>/<typeName> format
+# and is resolved to a file path in the resource-types-contrib module
 # using the convention: strip the "Radius." prefix, then
 # <namespace>/<typeName>/<typeName>.yaml.
 #
