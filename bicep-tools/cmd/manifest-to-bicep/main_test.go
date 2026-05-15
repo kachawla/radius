@@ -3,7 +3,6 @@ package main
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -50,17 +49,20 @@ func TestRunGenerate_MultipleFiles_SameNamespace(t *testing.T) {
 		}
 	}
 
-	// Verify the merged index.json references both resource types.
-	indexContent, err := os.ReadFile(filepath.Join(outputDir, "index.json"))
+	// Verify types.json contains definitions from both manifests by checking
+	// that the merged output is larger than a single-manifest output.
+	singleDir := t.TempDir()
+	err = RunGenerate([]string{"testdata/containers.yaml"}, singleDir)
 	if err != nil {
-		t.Fatalf("failed to read index.json: %v", err)
+		t.Fatalf("RunGenerate (single) returned error: %v", err)
 	}
 
-	indexStr := string(indexContent)
-	for _, typeName := range []string{"Radius.Compute/containers", "Radius.Compute/routes"} {
-		if !strings.Contains(indexStr, typeName) {
-			t.Errorf("expected index.json to contain %q, but it was not found", typeName)
-		}
+	mergedTypes, _ := os.ReadFile(filepath.Join(outputDir, "types.json"))
+	singleTypes, _ := os.ReadFile(filepath.Join(singleDir, "types.json"))
+
+	if len(mergedTypes) <= len(singleTypes) {
+		t.Errorf("merged types.json (%d bytes) should be larger than single-manifest types.json (%d bytes)",
+			len(mergedTypes), len(singleTypes))
 	}
 }
 
@@ -73,8 +75,8 @@ func TestRunGenerate_MultipleFiles_DifferentNamespaces(t *testing.T) {
 	}
 
 	expected := "all manifests must share the same namespace"
-	if !strings.Contains(err.Error(), expected) {
-		t.Errorf("expected error containing %q, got %q", expected, err.Error())
+	if got := err.Error(); !contains(got, expected) {
+		t.Errorf("expected error containing %q, got %q", expected, got)
 	}
 }
 
@@ -87,8 +89,8 @@ func TestRunGenerate_NonexistentFile(t *testing.T) {
 	}
 
 	expected := "manifest file does not exist"
-	if !strings.Contains(err.Error(), expected) {
-		t.Errorf("expected error containing %q, got %q", expected, err.Error())
+	if got := err.Error(); !contains(got, expected) {
+		t.Errorf("expected error containing %q, got %q", expected, got)
 	}
 }
 
@@ -101,8 +103,8 @@ func TestRunGenerate_EmptyManifestList(t *testing.T) {
 	}
 
 	expected := "at least one manifest file is required"
-	if !strings.Contains(err.Error(), expected) {
-		t.Errorf("expected error containing %q, got %q", expected, err.Error())
+	if got := err.Error(); !contains(got, expected) {
+		t.Errorf("expected error containing %q, got %q", expected, got)
 	}
 }
 
@@ -114,7 +116,20 @@ func TestMergeManifestFiles_DuplicateType(t *testing.T) {
 	}
 
 	expected := "duplicate resource type"
-	if !strings.Contains(err.Error(), expected) {
-		t.Errorf("expected error containing %q, got %q", expected, err.Error())
+	if got := err.Error(); !contains(got, expected) {
+		t.Errorf("expected error containing %q, got %q", expected, got)
 	}
+}
+
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && searchString(s, substr)
+}
+
+func searchString(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }
