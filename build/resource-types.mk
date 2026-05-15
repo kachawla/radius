@@ -66,8 +66,9 @@ MANUAL_CORE_MANIFESTS := applications_core.yaml applications_dapr.yaml applicati
 .PHONY: update-resource-types
 update-resource-types: ## Bump resource-types-contrib to latest and sync manifest files
 	@echo "Updating $(RESOURCE_TYPES_MODULE) to latest version..."
-	# Update the dependency in go.mod to the latest version.
-	go get -u $(RESOURCE_TYPES_MODULE)
+	# Update only the resource-types-contrib dependency in go.mod to the latest
+	# version. Using @latest (without -u) avoids upgrading transitive dependencies.
+	go get $(RESOURCE_TYPES_MODULE)@latest
 	go mod tidy
 	# Copy the manifest files from the newly pinned version.
 	$(MAKE) sync-resource-types
