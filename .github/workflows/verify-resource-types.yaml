@@ -19,8 +19,12 @@
 # resource-types-contrib module pinned in go.mod.
 #
 # It runs "make sync-resource-types", which re-copies the manifest files from
-# the Go module cache, and then checks for any diff. If the committed files
-# differ from what the pinned module version produces, the PR fails.
+# the Go module cache, and then checks for any diff.
+#
+# - If there is no diff, the committed copies are in sync and the check passes.
+# - If there is a diff, the committed copies have drifted from the pinned
+#   version and the check fails. The developer must run
+#   "make sync-resource-types" locally and commit the updated files.
 #
 # This catches:
 #   - A go.mod bump without re-running "make sync-resource-types"
