@@ -1,0 +1,156 @@
+# ------------------------------------------------------------
+# Copyright 2026 The Radius Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------
+
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: Publish Bicep Extension
+
+# Builds the unified `radius` Bicep extension (TypeSpec/Swagger-derived
+# Applications.* and Radius.Core types + contrib manifests under
+# deploy/manifest/built-in-providers/) and publishes it to
+# biceptypes.azurecr.io.
+#
+# Triggers:
+#   * push to `main`              -> publishes `radius:latest`
+#   * push of a `v*` tag          -> publishes `radius:<tag>` (versioned release)
+#   * workflow_dispatch           -> manual trigger; defaults to the `latest`
+#                                    tag on the running ref but allows an
+#                                    override via `tag` input
+#
+# Note: contrib repo (`resource-types-contrib`) merges do NOT publish `latest`
+# directly. They fire `repository_dispatch` to this repo (handled by
+# `contrib-update-resource-types.yaml`), which opens a PR running
+# `make update-resource-types` to refresh manifest copies committed under
+# `deploy/manifest/built-in-providers/`. When that PR merges to `main`, this
+# workflow runs via the push-to-main trigger and republishes `latest`.
+#
+# See the design note:
+#   eng/design-notes/extensibility/2026-05-unified-bicep-extension-publishing.md
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "OCI tag to publish under (defaults to 'latest')."
+        required: false
+        default: "latest"
+
+permissions: {}
+
+concurrency:
+  # Serialize publishes so two pushes don't race to update the same tag.
+  group: publish-bicep-extension-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  BICEP_TYPES_REGISTRY: biceptypes.azurecr.io
+  BICEP_EXTENSION_REPO: radius
+  # Pinned Bicep CLI version. Kept in sync with build/install-bicep.sh.
+  BICEP_VER: v0.42.1
+
+jobs:
+  publish:
+    name: Publish radius Bicep extension
+    if: github.repository == 'radius-project/radius'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read # Required for actions/checkout
+      id-token: write # Required for azure/login (OIDC)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Determine publish tag
+        id: tag
+        env:
+          GITHUB_REF: ${{ github.ref }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
+            tag="${INPUT_TAG:-latest}"
+          elif [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            tag="${GITHUB_REF#refs/tags/}"
+          else
+            # push to main
+            tag="latest"
+          fi
+          # Validate tag is a safe OCI tag: alphanumeric, dots, dashes, underscores.
+          if ! [[ "${tag}" =~ ^[a-zA-Z0-9._-]+$ ]]; then
+            echo "ERROR: Invalid OCI tag '${tag}'. Tags must contain only alphanumeric characters, dots, dashes, and underscores."
+            exit 1
+          fi
+          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+          echo "Resolved publish tag: ${tag}"
+
+      - name: Setup Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+          cache: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: .node-version
+
+      - name: Generate unified Bicep types
+        env:
+          VERSION: ${{ steps.tag.outputs.tag }}
+        run: make generate-bicep-types VERSION="${VERSION}"
+
+      - name: Setup Bicep CLI
+        run: |
+          set -euo pipefail
+          curl -sSLo bicep "https://github.com/Azure/bicep/releases/download/${BICEP_VER}/bicep-linux-x64"
+          chmod +x ./bicep
+          sudo mv ./bicep /usr/local/bin/bicep
+          bicep --version
+
+      - name: Login to Azure
+        uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
+        with:
+          client-id: ${{ secrets.BICEPTYPES_CLIENT_ID }}
+          tenant-id: ${{ secrets.BICEPTYPES_TENANT_ID }}
+          subscription-id: ${{ secrets.BICEPTYPES_SUBSCRIPTION_ID }}
+
+      - name: Login to ACR
+        run: az acr login --name biceptypes
+
+      - name: Publish Bicep extension
+        env:
+          BICEP_PUBLISH_TARGET: br:${{ env.BICEP_TYPES_REGISTRY }}/${{ env.BICEP_EXTENSION_REPO }}:${{ steps.tag.outputs.tag }}
+        run: make publish-bicep-extension BICEP_PUBLISH_TARGET="${BICEP_PUBLISH_TARGET}"
+
+      - name: Summarize
+        run: |
+          {
+            echo "## Published Bicep extension"
+            echo "* Target: \`br:${{ env.BICEP_TYPES_REGISTRY }}/${{ env.BICEP_EXTENSION_REPO }}:${{ steps.tag.outputs.tag }}\`"
+            echo "* Trigger: \`${{ github.event_name }}\`"
+            echo "* Ref: \`${{ github.ref }}\`"
+            echo "* Commit: \`${{ github.sha }}\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
