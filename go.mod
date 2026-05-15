@@ -6,10 +6,6 @@ go 1.26.3
 // xref: https://github.com/opencontainers/go-digest/pull/66
 replace github.com/opencontainers/go-digest => github.com/opencontainers/go-digest v1.0.1-0.20220411205349-bde1400a84be
 
-// TODO: Remove this replace directive once https://github.com/radius-project/resource-types-contrib/pull/158
-// is merged. After merging, run: go get -u github.com/radius-project/resource-types-contrib && go mod tidy
-replace github.com/radius-project/resource-types-contrib => ../resource-types-contrib
-
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.21.1
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.14.0-beta.2.0.20260124023332-4c5175309ebb
@@ -85,7 +81,7 @@ require (
 	github.com/opencontainers/image-spec v1.1.1
 	github.com/projectcontour/contour v1.33.4
 	github.com/prometheus/client_golang v1.23.2
-	github.com/radius-project/resource-types-contrib v0.0.0
+	github.com/radius-project/resource-types-contrib v0.0.0-20260515162318-067b29d71eb8
 	github.com/sethvargo/go-retry v0.3.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10

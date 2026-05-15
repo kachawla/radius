@@ -17,5 +17,4 @@ defaultRegistration:
   - Radius.Compute/persistentVolumes
   - Radius.Compute/routes
   - Radius.Data/mySqlDatabases
-  - Radius.Data/postgreSqlDatabases
   - Radius.Security/secrets
