@@ -55,6 +55,12 @@ MANIFEST_DEST_DIRS := deploy/manifest/built-in-providers/dev deploy/manifest/bui
 # The Go module path for resource-types-contrib.
 RESOURCE_TYPES_MODULE := github.com/radius-project/resource-types-contrib
 
+# Files in the manifest destination directories that are hand-maintained and
+# should NOT be managed (created or deleted) by the sync target. These are
+# resource providers that require explicit location addresses and are not
+# sourced from resource-types-contrib.
+HAND_MAINTAINED_MANIFESTS := applications_core.yaml applications_dapr.yaml applications_datastores.yaml applications_messaging.yaml microsoft_resources.yaml radius_core.yaml
+
 ##@ Resource Types
 
 .PHONY: update-resource-types
@@ -100,5 +106,33 @@ sync-resource-types: ## Copy manifest files listed in defaults.yaml from the pin
 			cp "$$src_path" "$$dest_dir/$$type_name.yaml"; \
 		done && \
 		echo "  Copied $$entry"; \
+	done
+	# Remove stale managed files: any YAML in the destination directories that
+	# is NOT hand-maintained and NOT in the current defaults.yaml list. This
+	# prevents previously-copied manifests from remaining registered after their
+	# entry is removed from defaults.yaml.
+	@EXPECTED_FILES="" && \
+	for entry in $$(yq '.defaultRegistration[]' $(DEFAULTS_YAML)); do \
+		rel_path=$$(echo "$$entry" | sed 's/^Radius\.//') && \
+		type_name=$$(echo "$$rel_path" | cut -d'/' -f2) && \
+		EXPECTED_FILES="$$EXPECTED_FILES $$type_name.yaml"; \
+	done && \
+	for dest_dir in $(MANIFEST_DEST_DIRS); do \
+		for file in "$$dest_dir"/*.yaml; do \
+			basename=$$(basename "$$file") && \
+			is_hand_maintained=false && \
+			for hm in $(HAND_MAINTAINED_MANIFESTS); do \
+				if [ "$$basename" = "$$hm" ]; then is_hand_maintained=true; break; fi; \
+			done && \
+			if [ "$$is_hand_maintained" = "true" ]; then continue; fi && \
+			is_expected=false && \
+			for ef in $$EXPECTED_FILES; do \
+				if [ "$$basename" = "$$ef" ]; then is_expected=true; break; fi; \
+			done && \
+			if [ "$$is_expected" = "false" ]; then \
+				echo "  Removing stale manifest: $$file"; \
+				rm "$$file"; \
+			fi; \
+		done; \
 	done
 	@echo "Done. Review and commit the updated files."
