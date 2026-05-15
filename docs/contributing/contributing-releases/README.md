@@ -130,7 +130,7 @@ git push origin vX.Y.Z-rcN
 
 ### Step 3: Update default resource types
 
-Ensure the default resource type manifests are up to date with the latest `resource-types-contrib` definitions. Run the following from the same branch you will use for the `versions.yaml` update:
+Ensure the default resource type manifests are up to date with the latest `resource-types-contrib` definitions:
 
 ```bash
 make update-resource-types
@@ -143,7 +143,7 @@ If the update fails or the copied manifests fail schema validation at startup du
 1. **Fix forward**: Correct the manifest in `resource-types-contrib`, merge the fix, then re-run `make update-resource-types`.
 2. **Pin to last known good version**: Revert the `go.mod` change to keep the previous `resource-types-contrib` version and run `make sync-resource-types` to restore the matching manifests.
 
-Include the updated `go.mod`, `go.sum`, and manifest files in the same PR as the `versions.yaml` change.
+Open a separate PR with the updated `go.mod`, `go.sum`, and manifest files. Merge it before proceeding to the `versions.yaml` update.
 
 ### Step 4: Update versions.yaml
 
