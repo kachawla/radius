@@ -39,7 +39,8 @@ on:
       - release/*
     paths:
       # Trigger when the default list, the copied manifests, the dependency
-      # version (go.mod/go.sum), or the sync logic itself changes.
+      # version (go.mod/go.sum), or the sync logic (Makefile, resource-types.mk)
+      # changes.
       - 'go.mod'
       - 'go.sum'
       - 'deploy/manifest/defaults.yaml'
