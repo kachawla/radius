@@ -1,6 +1,4 @@
 extension radius
-extension containers
-extension routes
 
 param environment string
 
