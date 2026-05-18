@@ -1,0 +1,61 @@
+/*
+Copyright 2023 The Radius Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package resource_test
+
+import (
+	"testing"
+
+	"github.com/radius-project/radius/test/rp"
+	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/testutil"
+	"github.com/radius-project/radius/test/validation"
+)
+
+// Test_DefaultContainers_Deploy verifies that the default Radius.Compute/containers
+// resource type (copied from resource-types-contrib) can be deployed end-to-end.
+//
+// The type and its recipe are registered at startup from the copied manifests
+// and the default recipe pack. This test validates the full path:
+//   - Manifest loaded at startup (from built-in-providers/)
+//   - Type registered in UCP (via registerResourceProviderDirect)
+//   - Default recipe available (from recipe pack)
+//   - Container deployed successfully via the recipe
+func Test_DefaultContainers_Deploy(t *testing.T) {
+	template := "testdata/default-containers-test.bicep"
+	appName := "default-containers-app"
+
+	test := rp.NewRPTest(t, appName, []rp.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: appName,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "default-container",
+						Type: "Radius.Compute/containers",
+					},
+				},
+			},
+			SkipKubernetesOutputResourceValidation: true,
+		},
+	})
+
+	test.Test(t)
+}
