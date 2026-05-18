@@ -4,7 +4,6 @@ param environment string
 
 resource app 'Radius.Core/applications@2025-08-01-preview' = {
   name: 'default-containers-app'
-  location: 'global'
   properties: {
     environment: environment
   }
