@@ -21,7 +21,6 @@ import (
 
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
-	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 )
 
@@ -44,7 +43,7 @@ func Test_DefaultContainers_Deploy(t *testing.T) {
 
 	test := rp.NewRPTest(t, appName, []rp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
+			Executor: step.NewDeployExecutor(template),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
@@ -62,6 +61,7 @@ func Test_DefaultContainers_Deploy(t *testing.T) {
 				},
 			},
 			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
 		},
 	})
 

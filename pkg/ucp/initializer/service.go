@@ -18,6 +18,7 @@ package initializer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -209,6 +210,9 @@ func registerResourceProviderDirect(ctx context.Context, dbClient database.Clien
 	locationResourceTypes := map[string]datamodel.LocationResourceTypeConfiguration{}
 
 	existingLocation, err := database.GetResource[datamodel.Location](ctx, dbClient, locationID)
+	if err != nil && !errors.Is(err, &database.ErrNotFound{}) {
+		return fmt.Errorf("failed to read existing location %s/%s: %w", rp.Namespace, locationName, err)
+	}
 	if err == nil {
 		for name, config := range existingLocation.Properties.ResourceTypes {
 			locationResourceTypes[name] = config
@@ -254,6 +258,9 @@ func registerResourceProviderDirect(ctx context.Context, dbClient database.Clien
 	summaryID := rootScope + "/providers/System.Resources/resourceProviderSummaries/" + rp.Namespace
 
 	existingSummary, err := database.GetResource[datamodel.ResourceProviderSummary](ctx, dbClient, summaryID)
+	if err != nil && !errors.Is(err, &database.ErrNotFound{}) {
+		return fmt.Errorf("failed to read existing summary %s: %w", rp.Namespace, err)
+	}
 	if err == nil {
 		for name, rt := range existingSummary.Properties.ResourceTypes {
 			if _, exists := summaryResourceTypes[name]; !exists {

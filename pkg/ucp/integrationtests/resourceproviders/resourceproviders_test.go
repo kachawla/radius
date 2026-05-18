@@ -297,6 +297,10 @@ func Test_ResourceProvider_DefaultsRegistered(t *testing.T) {
 					return
 				}
 			}
+
+			// TODO: Also verify the ResourceProviderSummary contains all types.
+			// The summary is what rad resource-type list reads from. Skipped for
+			// now as the summary API response format needs investigation.
 		}
 	}, registerManifestWaitDuration, registerManifestWaitInterval, "default resource type registration did not complete in time")
 }
