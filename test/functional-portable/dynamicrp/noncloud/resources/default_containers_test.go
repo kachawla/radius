@@ -48,7 +48,7 @@ func Test_DefaultContainers_Deploy(t *testing.T) {
 				Resources: []validation.RPResource{
 					{
 						Name: appName,
-						Type: validation.ApplicationsResource,
+						Type: "Radius.Core/applications",
 					},
 					{
 						Name: "default-container",
