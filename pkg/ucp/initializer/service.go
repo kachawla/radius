@@ -202,8 +202,19 @@ func registerResourceProviderDirect(ctx context.Context, dbClient database.Clien
 	}
 
 	// 3. Save Location
+	// Read the existing location (if any) and merge in the new resource types.
+	// This supports multiple manifest files sharing the same namespace, where
+	// each file contributes different resource types to the same location.
 	locationID := rpID + "/locations/" + locationName
 	locationResourceTypes := map[string]datamodel.LocationResourceTypeConfiguration{}
+
+	existingLocation, err := database.GetResource[datamodel.Location](ctx, dbClient, locationID)
+	if err == nil {
+		for name, config := range existingLocation.Properties.ResourceTypes {
+			locationResourceTypes[name] = config
+		}
+	}
+
 	for typeName, resourceType := range rp.Types {
 		apiVersions := map[string]datamodel.LocationAPIVersionConfiguration{}
 		for apiVersionName := range resourceType.APIVersions {
@@ -238,7 +249,19 @@ func registerResourceProviderDirect(ctx context.Context, dbClient database.Clien
 	}
 
 	// 4. Save ResourceProviderSummary
+	// Read the existing summary (if any) and merge in the new resource types,
+	// same as for the location above.
 	summaryID := rootScope + "/providers/System.Resources/resourceProviderSummaries/" + rp.Namespace
+
+	existingSummary, err := database.GetResource[datamodel.ResourceProviderSummary](ctx, dbClient, summaryID)
+	if err == nil {
+		for name, rt := range existingSummary.Properties.ResourceTypes {
+			if _, exists := summaryResourceTypes[name]; !exists {
+				summaryResourceTypes[name] = rt
+			}
+		}
+	}
+
 	summaryModel := &datamodel.ResourceProviderSummary{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{

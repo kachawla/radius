@@ -166,6 +166,11 @@ func Test_ResourceProvider_RegisterManifests(t *testing.T) {
 // the code path used by resource type manifests copied from
 // resource-types-contrib, which omit location so that UCP routes requests via
 // DefaultDownstreamEndpoint (dynamic-rp).
+//
+// The test directory contains two manifest files (containers.yaml and
+// persistentVolumes.yaml) that share the same namespace (Radius.Compute).
+// This verifies that the initializer correctly merges types from multiple
+// files into the same resource provider, location, and summary.
 func Test_ResourceProvider_RegisterManifests_NoLocation(t *testing.T) {
 	server := testhost.Start(t, testhost.TestHostOptionFunc(func(options *ucp.Options) {
 		options.Config.Initialization.ManifestDirectory = "testdata/manifests-no-location"
@@ -176,7 +181,8 @@ func Test_ResourceProvider_RegisterManifests_NoLocation(t *testing.T) {
 
 	noLocationNamespace := "Radius.Compute"
 	noLocationResourceProviderURL := "/planes/radius/local/providers/System.Resources/resourceproviders/" + noLocationNamespace + radiusAPIVersion
-	noLocationResourceTypeURL := "/planes/radius/local/providers/System.Resources/resourceproviders/" + noLocationNamespace + "/resourcetypes/containers" + radiusAPIVersion
+	noLocationContainersURL := "/planes/radius/local/providers/System.Resources/resourceproviders/" + noLocationNamespace + "/resourcetypes/containers" + radiusAPIVersion
+	noLocationPersistentVolumesURL := "/planes/radius/local/providers/System.Resources/resourceproviders/" + noLocationNamespace + "/resourcetypes/persistentVolumes" + radiusAPIVersion
 	noLocationLocationURL := "/planes/radius/local/providers/System.Resources/resourceproviders/" + noLocationNamespace + "/locations/global" + radiusAPIVersion
 
 	require.EventuallyWithTf(t, func(collect *assert.CollectT) {
@@ -184,9 +190,13 @@ func Test_ResourceProvider_RegisterManifests_NoLocation(t *testing.T) {
 		response := server.MakeRequest(http.MethodGet, noLocationResourceProviderURL, nil)
 		assert.Equal(collect, 200, response.Raw.StatusCode, "resource provider Radius.Compute should be registered")
 
-		// Verify the resource type was registered.
-		response = server.MakeRequest(http.MethodGet, noLocationResourceTypeURL, nil)
+		// Verify both resource types from separate manifest files are registered
+		// under the same namespace.
+		response = server.MakeRequest(http.MethodGet, noLocationContainersURL, nil)
 		assert.Equal(collect, 200, response.Raw.StatusCode, "resource type Radius.Compute/containers should be registered")
+
+		response = server.MakeRequest(http.MethodGet, noLocationPersistentVolumesURL, nil)
+		assert.Equal(collect, 200, response.Raw.StatusCode, "resource type Radius.Compute/persistentVolumes should be registered")
 
 		// Verify the location was created with no address, so UCP uses
 		// DefaultDownstreamEndpoint for routing.
