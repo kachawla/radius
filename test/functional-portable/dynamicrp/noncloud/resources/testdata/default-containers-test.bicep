@@ -1,5 +1,6 @@
 extension radius
 extension containers
+extension routes
 
 param environment string
 
@@ -23,7 +24,37 @@ resource container 'Radius.Compute/containers@2025-08-01-preview' = {
         image: 'ghcr.io/radius-project/mirror/debian:latest'
         command: ['/bin/sh']
         args: ['-c', 'while true; do echo hello; sleep 10;done']
+        ports: {
+          http: {
+            containerPort: 8080
+          }
+        }
       }
     }
+  }
+}
+
+// Deploy a Radius.Compute/routes resource that routes to the container above.
+// Including a second type from the same Radius.Compute namespace validates that
+// both types are registered correctly when loaded from separate manifest files.
+resource route 'Radius.Compute/routes@2025-08-01-preview' = {
+  name: 'default-route'
+  properties: {
+    environment: environment
+    application: app.id
+    rules: [
+      {
+        matches: [
+          {
+            httpPath: '/'
+          }
+        ]
+        destinationContainer: {
+          resourceId: container.id
+          containerName: 'web'
+          containerPortName: 'http'
+        }
+      }
+    ]
   }
 }

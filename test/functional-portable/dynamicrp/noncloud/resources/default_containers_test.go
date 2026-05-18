@@ -26,14 +26,18 @@ import (
 )
 
 // Test_DefaultContainers_Deploy verifies that the default Radius.Compute/containers
-// resource type (copied from resource-types-contrib) can be deployed end-to-end.
+// and Radius.Compute/routes resource types (copied from resource-types-contrib)
+// can be deployed end-to-end.
 //
-// The type and its recipe are registered at startup from the copied manifests
+// The types and their recipes are registered at startup from the copied manifests
 // and the default recipe pack. This test validates the full path:
-//   - Manifest loaded at startup (from built-in-providers/)
-//   - Type registered in UCP (via registerResourceProviderDirect)
-//   - Default recipe available (from recipe pack)
-//   - Container deployed successfully via the recipe
+//   - Manifests loaded at startup (from built-in-providers/)
+//   - Types registered in UCP (via registerResourceProviderDirect)
+//   - Default recipes available (from recipe pack)
+//   - Resources deployed successfully via recipes
+//
+// Using two types from the same namespace (Radius.Compute) also validates that
+// the namespace merge fix works correctly in a real deployment scenario.
 func Test_DefaultContainers_Deploy(t *testing.T) {
 	template := "testdata/default-containers-test.bicep"
 	appName := "default-containers-app"
@@ -50,6 +54,10 @@ func Test_DefaultContainers_Deploy(t *testing.T) {
 					{
 						Name: "default-container",
 						Type: "Radius.Compute/containers",
+					},
+					{
+						Name: "default-route",
+						Type: "Radius.Compute/routes",
 					},
 				},
 			},
