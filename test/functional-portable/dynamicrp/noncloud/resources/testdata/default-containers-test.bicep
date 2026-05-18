@@ -4,6 +4,7 @@ param environment string
 
 resource app 'Radius.Core/applications@2025-08-01-preview' = {
   name: 'default-containers-app'
+  location: 'global'
   properties: {
     environment: environment
   }
@@ -50,7 +51,7 @@ resource route 'Radius.Compute/routes@2025-08-01-preview' = {
         destinationContainer: {
           resourceId: container.id
           containerName: 'web'
-          containerPortName: 'http'
+          containerPort: 8080
         }
       }
     ]

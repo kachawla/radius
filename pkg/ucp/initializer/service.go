@@ -246,6 +246,10 @@ func registerResourceProviderDirect(ctx context.Context, dbClient database.Clien
 	}
 	if address != "" {
 		locationModel.Properties.Address = &address
+	} else if err == nil && existingLocation.Properties.Address != nil {
+		// Preserve the address from the existing location if the current
+		// manifest does not specify one.
+		locationModel.Properties.Address = existingLocation.Properties.Address
 	}
 
 	if err := saveResource(ctx, dbClient, locationID, locationModel); err != nil {

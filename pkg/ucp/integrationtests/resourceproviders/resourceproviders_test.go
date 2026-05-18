@@ -172,7 +172,7 @@ func Test_ResourceProvider_RegisterManifests(t *testing.T) {
 // The test directory contains two manifest files (containers.yaml and
 // persistentVolumes.yaml) that share the same namespace (Radius.Compute).
 // This verifies that the initializer correctly merges types from multiple
-// files into the same resource provider, location, and summary.
+// files into the same resource provider and location.
 func Test_ResourceProvider_RegisterManifests_NoLocation(t *testing.T) {
 	server := testhost.Start(t, testhost.TestHostOptionFunc(func(options *ucp.Options) {
 		options.Config.Initialization.ManifestDirectory = "testdata/manifests-no-location"
