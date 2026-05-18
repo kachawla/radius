@@ -212,6 +212,17 @@ func Test_ResourceProvider_RegisterManifests_NoLocation(t *testing.T) {
 
 		props, _ := locationBody["properties"].(map[string]any)
 		assert.Nil(collect, props["address"], "location address should be absent for no-location manifests")
+
+		// Verify the location contains both resource types from the two manifest
+		// files. Without the namespace merge fix, the location would only contain
+		// the types from the last file processed (alphabetically).
+		resourceTypes, _ := props["resourceTypes"].(map[string]any)
+		if !assert.Contains(collect, resourceTypes, "containers", "location should contain containers type") {
+			return
+		}
+		if !assert.Contains(collect, resourceTypes, "persistentVolumes", "location should contain persistentVolumes type") {
+			return
+		}
 	}, registerManifestWaitDuration, registerManifestWaitInterval, "no-location manifest registration did not complete in time")
 }
 
