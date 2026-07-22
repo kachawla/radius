@@ -794,6 +794,17 @@ func Test_WrapARMParameters(t *testing.T) {
 				"name": map[string]any{"value": "mysa"},
 			},
 		},
+		{
+			name: "preserves nested AVM lock object",
+			params: map[string]any{
+				"lock": map[string]any{"kind": "None"},
+			},
+			expected: map[string]any{
+				"lock": map[string]any{
+					"value": map[string]any{"kind": "None"},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
