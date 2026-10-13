@@ -80,6 +80,13 @@ global:
     # Default: ERROR
     loglevel: "ERROR"
 
+  # OpenTofu is downloaded on first use into the shared recipe volume.
+  # Its pinned version is managed in build/tools.yaml, independently of Terraform.
+  opentofu:
+    # Optional absolute path to a preinstalled tofu binary for offline/custom images.
+    execPath: ""
+    loglevel: "ERROR"
+
   # Configure global.targetCluster to direct recipe execution at an external
   # Kubernetes cluster instead of the control-plane cluster Radius runs on.
   # Disabled by default; when disabled the chart renders no extra volumes or

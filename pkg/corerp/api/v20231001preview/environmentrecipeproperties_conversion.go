@@ -39,7 +39,7 @@ func (dst *RecipeGetMetadataResponse) ConvertFrom(src v1.DataModelInterface) err
 	dst.TemplateKind = new(recipe.TemplateKind)
 	dst.TemplatePath = new(recipe.TemplatePath)
 	switch recipe.TemplateKind {
-	case types.TemplateKindTerraform:
+	case types.TemplateKindTerraform, types.TemplateKindOpenTofu:
 		dst.TemplateVersion = new(recipe.TemplateVersion)
 	case types.TemplateKindBicep:
 		dst.PlainHTTP = new(recipe.PlainHTTP)

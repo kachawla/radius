@@ -122,7 +122,7 @@ func inspectModule(workingDir string, recipe *recipes.EnvironmentDefinition) (*m
 	}
 
 	moduleDir := filepath.Join(workingDir, moduleRootDir, moduleName, subModule)
-	hasConfig, err := hasTerraformConfigFiles(moduleDir)
+	hasConfig, err := hasTerraformConfigFiles(moduleDir, recipe.Driver)
 	if err != nil {
 		return nil, fmt.Errorf("error loading the module: %w", err)
 	}
@@ -199,7 +199,7 @@ func inspectModule(workingDir string, recipe *recipes.EnvironmentDefinition) (*m
 }
 
 // hasTerraformConfigFiles reports whether moduleDir contains any regular Terraform configuration files.
-func hasTerraformConfigFiles(moduleDir string) (bool, error) {
+func hasTerraformConfigFiles(moduleDir, kind string) (bool, error) {
 	info, err := os.Stat(moduleDir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -215,16 +215,20 @@ func hasTerraformConfigFiles(moduleDir string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	hasConfig := false
 	for _, entry := range entries {
 		if !entry.Type().IsRegular() {
 			continue
 		}
 
 		name := entry.Name()
+		if kind == recipes.TemplateKindOpenTofu && (strings.HasSuffix(name, ".tofu") || strings.HasSuffix(name, ".tofu.json")) {
+			return false, fmt.Errorf("OpenTofu recipes currently support .tf and .tf.json files only; unsupported file %q", name)
+		}
 		if strings.HasSuffix(name, ".tf") || strings.HasSuffix(name, ".tf.json") {
-			return true, nil
+			hasConfig = true
 		}
 	}
 
-	return false, nil
+	return hasConfig, nil
 }

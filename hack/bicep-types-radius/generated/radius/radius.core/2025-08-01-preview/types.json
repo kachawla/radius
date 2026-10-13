@@ -1768,7 +1768,7 @@
     "properties": {
       "kind": {
         "type": {
-          "$ref": "#/155"
+          "$ref": "#/156"
         },
         "flags": 1,
         "description": "(Required) The kind of Recipe, which determines how Radius runs it."
@@ -1785,27 +1785,31 @@
           "$ref": "#/0"
         },
         "flags": 1,
-        "description": "(Required) Location of the Recipe. For Bicep Recipes this is an OCI registry reference. For Terraform Recipes this is the module source such as a Git URL or a Terraform registry module."
+        "description": "(Required) Location of the Recipe. For Bicep Recipes this is an OCI registry reference. For Terraform and OpenTofu Recipes this is a module source, such as a Git URL or a module registry address. OpenTofu uses the OpenTofu Registry by default."
       },
       "parameters": {
         "type": {
-          "$ref": "#/156"
+          "$ref": "#/157"
         },
         "flags": 0,
         "description": "(Optional) Default parameter values passed to the Recipe when it runs. An Environment can override these per resource type through its `recipeParameters` property."
       },
       "outputs": {
         "type": {
-          "$ref": "#/157"
+          "$ref": "#/158"
         },
         "flags": 0,
-        "description": "(Optional) Maps the module outputs onto the resource type properties for recipes that point directly at a Bicep or Terraform module. Each value is the module output name for a non-secret property. Under the reserved `secrets` key a nested object maps secret property names to module output names and always routes those outputs to the resource secret outputs."
+        "description": "(Optional) Maps the module outputs onto the resource type properties for recipes that point directly at a Bicep, Terraform, or OpenTofu module. Each value is the module output name for a non-secret property. Under the reserved `secrets` key a nested object maps secret property names to module output names and always routes those outputs to the resource secret outputs."
       }
     }
   },
   {
     "$type": "StringLiteralType",
     "value": "terraform"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "opentofu"
   },
   {
     "$type": "StringLiteralType",
@@ -1819,6 +1823,9 @@
       },
       {
         "$ref": "#/154"
+      },
+      {
+        "$ref": "#/155"
       }
     ]
   },
@@ -1852,21 +1859,21 @@
     "properties": {
       "provisioningState": {
         "type": {
-          "$ref": "#/168"
+          "$ref": "#/169"
         },
         "flags": 2,
         "description": "(Read Only) The status of the Recipe Pack resource within the Radius control plane."
       },
       "referencedBy": {
         "type": {
-          "$ref": "#/169"
+          "$ref": "#/170"
         },
         "flags": 2,
         "description": "(Read Only) Resource IDs of the Environments that reference this Recipe Pack."
       },
       "recipes": {
         "type": {
-          "$ref": "#/170"
+          "$ref": "#/171"
         },
         "flags": 1,
         "description": "(Required) The Recipes in this pack, keyed by the resource type each Recipe provisions. Each key is a resource type such as `Radius.Data/redisCaches`."
@@ -1909,9 +1916,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/160"
-      },
-      {
         "$ref": "#/161"
       },
       {
@@ -1931,6 +1935,9 @@
       },
       {
         "$ref": "#/167"
+      },
+      {
+        "$ref": "#/168"
       }
     ]
   },
@@ -2004,21 +2011,21 @@
       },
       "recipes": {
         "type": {
-          "$ref": "#/158"
+          "$ref": "#/159"
         },
         "flags": 2,
         "description": "(Required) The Recipes in this pack, keyed by the resource type each Recipe provisions. Each key is a resource type such as `Radius.Data/redisCaches`."
       },
       "properties": {
         "type": {
-          "$ref": "#/159"
+          "$ref": "#/160"
         },
         "flags": 1,
         "description": "The resource-specific properties for this resource."
       },
       "tags": {
         "type": {
-          "$ref": "#/171"
+          "$ref": "#/172"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -2043,7 +2050,7 @@
     "$type": "ResourceType",
     "name": "Radius.Core/recipePacks@2025-08-01-preview",
     "body": {
-      "$ref": "#/172"
+      "$ref": "#/173"
     },
     "readableScopes": 0,
     "writableScopes": 0,
@@ -2072,10 +2079,10 @@
     },
     "elements": {
       "azurerm": {
-        "$ref": "#/180"
+        "$ref": "#/181"
       },
       "s3": {
-        "$ref": "#/178"
+        "$ref": "#/179"
       }
     }
   },
@@ -2089,7 +2096,7 @@
     "properties": {
       "type": {
         "type": {
-          "$ref": "#/177"
+          "$ref": "#/178"
         },
         "flags": 1
       },
@@ -2119,7 +2126,7 @@
     "properties": {
       "type": {
         "type": {
-          "$ref": "#/179"
+          "$ref": "#/180"
         },
         "flags": 1
       },
@@ -2175,9 +2182,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/181"
-      },
-      {
         "$ref": "#/182"
       },
       {
@@ -2197,6 +2201,9 @@
       },
       {
         "$ref": "#/188"
+      },
+      {
+        "$ref": "#/189"
       }
     ]
   },
@@ -2212,14 +2219,14 @@
     "properties": {
       "providerInstallation": {
         "type": {
-          "$ref": "#/192"
+          "$ref": "#/193"
         },
         "flags": 0,
         "description": "(Optional) Controls where Terraform installs providers from, such as a network mirror instead of the public registry."
       },
       "credentials": {
         "type": {
-          "$ref": "#/200"
+          "$ref": "#/201"
         },
         "flags": 0,
         "description": "(Optional) Credentials for authenticating to private Terraform registries such as `app.terraform.io`. Maps a registry hostname to its credential configuration. This authenticates to Terraform CLI registries over HTTP and does not authenticate Git-based module sources, which use a separate mechanism."
@@ -2232,14 +2239,14 @@
     "properties": {
       "networkMirror": {
         "type": {
-          "$ref": "#/193"
+          "$ref": "#/194"
         },
         "flags": 0,
         "description": "(Optional) A network mirror to install providers from instead of the public registry."
       },
       "direct": {
         "type": {
-          "$ref": "#/196"
+          "$ref": "#/197"
         },
         "flags": 0,
         "description": "(Optional) Providers to install directly from the public registry rather than a mirror."
@@ -2259,14 +2266,14 @@
       },
       "include": {
         "type": {
-          "$ref": "#/194"
+          "$ref": "#/195"
         },
         "flags": 0,
         "description": "(Optional) Provider address patterns to include from this mirror."
       },
       "exclude": {
         "type": {
-          "$ref": "#/195"
+          "$ref": "#/196"
         },
         "flags": 0,
         "description": "(Optional) Provider address patterns to exclude from this mirror."
@@ -2291,14 +2298,14 @@
     "properties": {
       "include": {
         "type": {
-          "$ref": "#/197"
+          "$ref": "#/198"
         },
         "flags": 0,
         "description": "(Optional) Provider address patterns to include for direct installation."
       },
       "exclude": {
         "type": {
-          "$ref": "#/198"
+          "$ref": "#/199"
         },
         "flags": 0,
         "description": "(Optional) Provider address patterns to exclude from direct installation."
@@ -2335,7 +2342,7 @@
     "name": "Record",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/199"
+      "$ref": "#/200"
     }
   },
   {
@@ -2352,35 +2359,35 @@
     "properties": {
       "backend": {
         "type": {
-          "$ref": "#/176"
+          "$ref": "#/177"
         },
         "flags": 0,
         "description": "(Optional) Remote Terraform state backend. Omission uses Kubernetes. Storage must already exist. Backend selection is immutable after TerraformSettings creation, including the Kubernetes default. Configure a cloud backend when creating new settings."
       },
       "provisioningState": {
         "type": {
-          "$ref": "#/211"
+          "$ref": "#/212"
         },
         "flags": 2,
         "description": "(Read Only) The status of the Terraform settings resource within the Radius control plane."
       },
       "referencedBy": {
         "type": {
-          "$ref": "#/212"
+          "$ref": "#/213"
         },
         "flags": 2,
         "description": "(Read Only) Resource IDs of the Environments that reference this Terraform settings resource."
       },
       "terraformrc": {
         "type": {
-          "$ref": "#/191"
+          "$ref": "#/192"
         },
         "flags": 0,
         "description": "(Optional) Settings for the Terraform CLI configuration file. Radius renders these into a `.terraformrc` file used when running Terraform Recipes."
       },
       "env": {
         "type": {
-          "$ref": "#/213"
+          "$ref": "#/214"
         },
         "flags": 0,
         "description": "(Optional) Environment variables injected into the Terraform process during Recipe execution."
@@ -2423,9 +2430,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/203"
-      },
-      {
         "$ref": "#/204"
       },
       {
@@ -2445,6 +2449,9 @@
       },
       {
         "$ref": "#/210"
+      },
+      {
+        "$ref": "#/211"
       }
     ]
   },
@@ -2490,63 +2497,63 @@
       },
       "type": {
         "type": {
-          "$ref": "#/174"
+          "$ref": "#/175"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/175"
+          "$ref": "#/176"
         },
         "flags": 10,
         "description": "The resource api version"
       },
       "backend": {
         "type": {
-          "$ref": "#/176"
+          "$ref": "#/177"
         },
         "flags": 2,
         "description": "(Optional) Remote Terraform state backend. Omission uses Kubernetes. Storage must already exist. Backend selection is immutable after TerraformSettings creation, including the Kubernetes default. Configure a cloud backend when creating new settings."
       },
       "provisioningState": {
         "type": {
-          "$ref": "#/189"
+          "$ref": "#/190"
         },
         "flags": 2,
         "description": "(Read Only) The status of the Terraform settings resource within the Radius control plane."
       },
       "referencedBy": {
         "type": {
-          "$ref": "#/190"
+          "$ref": "#/191"
         },
         "flags": 2,
         "description": "(Read Only) Resource IDs of the Environments that reference this Terraform settings resource."
       },
       "terraformrc": {
         "type": {
-          "$ref": "#/191"
+          "$ref": "#/192"
         },
         "flags": 2,
         "description": "(Optional) Settings for the Terraform CLI configuration file. Radius renders these into a `.terraformrc` file used when running Terraform Recipes."
       },
       "env": {
         "type": {
-          "$ref": "#/201"
+          "$ref": "#/202"
         },
         "flags": 2,
         "description": "(Optional) Environment variables injected into the Terraform process during Recipe execution."
       },
       "properties": {
         "type": {
-          "$ref": "#/202"
+          "$ref": "#/203"
         },
         "flags": 1,
         "description": "The resource-specific properties for this resource."
       },
       "tags": {
         "type": {
-          "$ref": "#/214"
+          "$ref": "#/215"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -2571,7 +2578,7 @@
     "$type": "ResourceType",
     "name": "Radius.Core/terraformSettings@2025-08-01-preview",
     "body": {
-      "$ref": "#/215"
+      "$ref": "#/216"
     },
     "readableScopes": 0,
     "writableScopes": 0,

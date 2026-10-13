@@ -77,8 +77,7 @@ type RecipeOptions struct {
 	// ConfigurationLoader is the loader for recipe configurations.
 	ConfigurationLoader configloader.ConfigurationLoader
 
-	// Drivers is a map of recipe driver names to driver constructors. If nil, the default drivers are used (Bicep, Terraform) will
-	// be used.
+	// Drivers maps recipe kinds to constructors. If nil, Bicep, Terraform, and OpenTofu are used.
 	Drivers map[string]func(options *Options) (driver.Driver, error)
 
 	// SecretsLoader provides access to secrets for recipes.
@@ -138,6 +137,7 @@ func (o *Options) RecipeEngine() (engine.Engine, error) {
 		o.Recipes.Drivers = map[string]func(options *Options) (driver.Driver, error){
 			recipes.TemplateKindBicep:     bicepDriver,
 			recipes.TemplateKindTerraform: terraformDriver,
+			recipes.TemplateKindOpenTofu:  openTofuDriver,
 		}
 	}
 
@@ -210,5 +210,20 @@ func terraformDriver(options *Options) (driver.Driver, error) {
 		terraform.TerraformOptions{
 			Path:     options.Config.Terraform.Path,
 			LogLevel: options.Config.Terraform.LogLevel,
+		}, *options.KubernetesProvider), nil
+}
+
+func openTofuDriver(options *Options) (driver.Driver, error) {
+	path := options.Config.OpenTofu.Path
+	if path == "" {
+		path = options.Config.Terraform.Path
+	}
+	return terraform.NewOpenTofuDriver(
+		options.UCP,
+		options.SecretProvider,
+		terraform.OpenTofuOptions{
+			Path:     path,
+			ExecPath: options.Config.OpenTofu.ExecPath,
+			LogLevel: options.Config.OpenTofu.LogLevel,
 		}, *options.KubernetesProvider), nil
 }

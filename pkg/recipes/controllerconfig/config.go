@@ -97,6 +97,10 @@ func New(options hostoptions.HostOptions) (*RecipeControllerConfig, error) {
 	}
 
 	cfg.ConfigLoader = configloader.NewEnvironmentLoader(clientOptions)
+	openTofuPath := options.Config.OpenTofu.Path
+	if openTofuPath == "" {
+		openTofuPath = options.Config.Terraform.Path
+	}
 	cfg.Engine = engine.NewEngine(engine.Options{
 		ConfigurationLoader: cfg.ConfigLoader,
 		SecretsLoader:       configloader.NewSecretStoreLoader(clientOptions, cfg.Kubernetes),
@@ -114,6 +118,12 @@ func New(options hostoptions.HostOptions) (*RecipeControllerConfig, error) {
 				terraform.TerraformOptions{
 					Path:     options.Config.Terraform.Path,
 					LogLevel: options.Config.Terraform.LogLevel,
+				}, *cfg.Kubernetes),
+			recipes.TemplateKindOpenTofu: terraform.NewOpenTofuDriver(options.UCPConnection, secretprovider.NewSecretProvider(options.Config.SecretProvider),
+				terraform.OpenTofuOptions{
+					Path:     openTofuPath,
+					ExecPath: options.Config.OpenTofu.ExecPath,
+					LogLevel: options.Config.OpenTofu.LogLevel,
 				}, *cfg.Kubernetes),
 		},
 	})

@@ -56,6 +56,14 @@ func TestMain(m *testing.M) {
 }
 
 func runTerraformTestHelper() error {
+	if len(os.Args) == 2 && os.Args[1] == "version" {
+		if filepath.Base(os.Args[0]) == openTofuBinaryName() {
+			fmt.Fprintln(os.Stdout, "OpenTofu v"+openTofuVersion)
+		} else {
+			fmt.Fprintln(os.Stdout, "Terraform v"+terraformVersion)
+		}
+		return nil
+	}
 	if os.Getenv(terraformBackendSnapshots) != "" {
 		if err := recordBackendTestExecution(); err != nil {
 			return err

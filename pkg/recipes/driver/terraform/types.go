@@ -26,6 +26,9 @@ const (
 	TerraformAzureProvider            = "registry.terraform.io/hashicorp/azurerm"
 	TerraformAWSProvider              = "registry.terraform.io/hashicorp/aws"
 	TerraformKubernetesProvider       = "registry.terraform.io/hashicorp/kubernetes"
+	OpenTofuAzureProvider             = "registry.opentofu.org/hashicorp/azurerm"
+	OpenTofuAWSProvider               = "registry.opentofu.org/hashicorp/aws"
+	OpenTofuKubernetesProvider        = "registry.opentofu.org/hashicorp/kubernetes"
 	PrivateRegistrySecretKey_Pat      = "pat"
 	PrivateRegistrySecretKey_Username = "username"
 )

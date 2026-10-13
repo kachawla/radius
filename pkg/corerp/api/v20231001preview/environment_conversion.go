@@ -33,7 +33,7 @@ import (
 const (
 	EnvironmentComputeKindKubernetes = "kubernetes"
 	EnvironmentComputeKindACI        = "aci"
-	invalidLocalModulePathFmt        = "local module paths are not supported with Terraform Recipes. The 'templatePath' '%s' was detected as a local module path because it begins with '/' or './' or '../'."
+	invalidLocalModulePathFmt        = "local module paths are not supported with %s Recipes. The 'templatePath' '%s' was detected as a local module path because it begins with '/' or './' or '../'."
 )
 
 // ConvertTo converts from the versioned Environment resource to version-agnostic datamodel.
@@ -428,18 +428,9 @@ func toEnvExtensionDataModel(e ExtensionClassification) datamodel.Extension {
 func toEnvironmentRecipeProperties(e RecipePropertiesClassification) (datamodel.EnvironmentRecipeProperties, error) {
 	switch c := e.(type) {
 	case *TerraformRecipeProperties:
-		if c.TemplatePath != nil {
-			// Check for local paths
-			if strings.HasPrefix(to.String(c.TemplatePath), "/") || strings.HasPrefix(to.String(c.TemplatePath), "./") || strings.HasPrefix(to.String(c.TemplatePath), "../") {
-				return datamodel.EnvironmentRecipeProperties{}, v1.NewClientErrInvalidRequest(fmt.Sprintf(invalidLocalModulePathFmt, to.String(c.TemplatePath)))
-			}
-		}
-		return datamodel.EnvironmentRecipeProperties{
-			TemplateKind:    types.TemplateKindTerraform,
-			TemplateVersion: to.String(c.TemplateVersion),
-			TemplatePath:    to.String(c.TemplatePath),
-			Parameters:      c.Parameters,
-		}, nil
+		return toModuleRecipeProperties(types.TemplateKindTerraform, "Terraform", c.TemplatePath, c.TemplateVersion, c.Parameters)
+	case *OpenTofuRecipeProperties:
+		return toModuleRecipeProperties(types.TemplateKindOpenTofu, "OpenTofu", c.TemplatePath, c.TemplateVersion, c.Parameters)
 	case *BicepRecipeProperties:
 		return datamodel.EnvironmentRecipeProperties{
 			TemplateKind: types.TemplateKindBicep,
@@ -451,10 +442,30 @@ func toEnvironmentRecipeProperties(e RecipePropertiesClassification) (datamodel.
 	return datamodel.EnvironmentRecipeProperties{}, nil
 }
 
+func toModuleRecipeProperties(kind, name string, path, version *string, parameters map[string]any) (datamodel.EnvironmentRecipeProperties, error) {
+	templatePath := to.String(path)
+	if strings.HasPrefix(templatePath, "/") || strings.HasPrefix(templatePath, "./") || strings.HasPrefix(templatePath, "../") {
+		return datamodel.EnvironmentRecipeProperties{}, v1.NewClientErrInvalidRequest(fmt.Sprintf(invalidLocalModulePathFmt, name, templatePath))
+	}
+	return datamodel.EnvironmentRecipeProperties{
+		TemplateKind:    kind,
+		TemplateVersion: to.String(version),
+		TemplatePath:    templatePath,
+		Parameters:      parameters,
+	}, nil
+}
+
 func fromRecipePropertiesClassificationDatamodel(e datamodel.EnvironmentRecipeProperties) RecipePropertiesClassification {
 	switch e.TemplateKind {
 	case types.TemplateKindTerraform:
 		return &TerraformRecipeProperties{
+			TemplateKind:    new(e.TemplateKind),
+			TemplateVersion: new(e.TemplateVersion),
+			TemplatePath:    new(e.TemplatePath),
+			Parameters:      e.Parameters,
+		}
+	case types.TemplateKindOpenTofu:
+		return &OpenTofuRecipeProperties{
 			TemplateKind:    new(e.TemplateKind),
 			TemplateVersion: new(e.TemplateVersion),
 			TemplatePath:    new(e.TemplatePath),

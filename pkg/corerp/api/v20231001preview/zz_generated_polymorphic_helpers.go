@@ -113,6 +113,8 @@ func unmarshalRecipePropertiesClassification(rawMsg json.RawMessage) (RecipeProp
 	switch m["templateKind"] {
 	case "bicep":
 		b = &BicepRecipeProperties{}
+	case "opentofu":
+		b = &OpenTofuRecipeProperties{}
 	case "terraform":
 		b = &TerraformRecipeProperties{}
 	default:

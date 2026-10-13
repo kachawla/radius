@@ -27,6 +27,7 @@ import (
 
 	tfjson "github.com/hashicorp/terraform-json"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
@@ -42,9 +43,66 @@ func setup(t *testing.T) (terraform.MockTerraformExecutor, terraformDriver) {
 	ctrl := gomock.NewController(t)
 	tfExecutor := terraform.NewMockTerraformExecutor(ctrl)
 
-	driver := terraformDriver{tfExecutor, TerraformOptions{Path: t.TempDir()}}
+	driver := terraformDriver{terraformExecutor: tfExecutor, options: TerraformOptions{Path: t.TempDir()}}
 
 	return *tfExecutor, driver
+}
+
+func TestModuleDriverKindAndProviderResources(t *testing.T) {
+	t.Parallel()
+	for _, kind := range []string{recipes.TemplateKindTerraform, recipes.TemplateKindOpenTofu} {
+		t.Run(kind, func(t *testing.T) {
+			t.Parallel()
+			kube := kubernetesclientprovider.KubernetesClientProvider{}
+			registry := "registry.terraform.io"
+			moduleDriver := NewTerraformDriver(nil, nil, TerraformOptions{Path: t.TempDir()}, kube)
+			if kind == recipes.TemplateKindOpenTofu {
+				registry = "registry.opentofu.org"
+				moduleDriver = NewOpenTofuDriver(nil, nil, OpenTofuOptions{Path: t.TempDir()}, kube)
+			}
+			state := &tfjson.State{Values: &tfjson.StateValues{
+				Outputs: map[string]*tfjson.StateOutput{
+					"endpoint": {Value: "host"},
+					"token":    {Value: "secret", Sensitive: true},
+				},
+				RootModule: &tfjson.StateModule{ChildModules: []*tfjson.StateModule{{
+					Resources: []*tfjson.StateResource{
+						{
+							ProviderName: registry + "/hashicorp/azurerm",
+							AttributeValues: map[string]any{
+								"id": "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/test",
+							},
+						},
+						{
+							ProviderName: registry + "/hashicorp/aws", Type: "aws_s3_bucket",
+							AttributeValues: map[string]any{"id": "test", "arn": "arn:aws:s3:::test"},
+						},
+						{
+							ProviderName: registry + "/hashicorp/kubernetes", Type: "kubernetes_manifest",
+							AttributeValues: map[string]any{"manifest": map[string]any{
+								"apiVersion": "v1", "kind": "Service",
+								"metadata": map[string]any{"name": "test", "namespace": "default"},
+							}},
+						},
+					},
+				}}},
+			}}
+			envConfig, _, definition := buildTestInputs()
+			definition.Driver = kind
+			definition.Outputs = map[string]string{"host": "endpoint"}
+			definition.SecretOutputs = map[string]string{"password": "token"}
+			output, err := moduleDriver.(*terraformDriver).prepareRecipeResponse(t.Context(), definition, envConfig, state)
+			require.NoError(t, err)
+			require.Equal(t, kind, output.Status.TemplateKind)
+			require.Equal(t, map[string]any{"host": "host"}, output.Values)
+			require.Equal(t, map[string]any{"password": "secret"}, output.Secrets)
+			require.ElementsMatch(t, []string{
+				"/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/test",
+				"/planes/aws/aws/accounts/179022619019/regions/global/providers/Terraform.AWS/aws_s3_bucket/test",
+				"/planes/kubernetes/local/namespaces/default/providers/v1/Service/test",
+			}, output.Resources)
+		})
+	}
 }
 
 func buildTestInputs() (recipes.Configuration, recipes.ResourceMetadata, recipes.EnvironmentDefinition) {

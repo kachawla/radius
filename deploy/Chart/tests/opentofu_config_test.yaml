@@ -1,0 +1,18 @@
+suite: OpenTofu recipe configuration
+templates:
+  - rp/configmaps.yaml
+  - dynamic-rp/configmaps.yaml
+tests:
+  - it: configures OpenTofu independently while retaining Terraform
+    asserts:
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'terraform:\n  path: "/terraform"\nopentofu:\n  path: "/terraform"\n  execPath: ""\n  logLevel: "ERROR"'
+  - it: passes an explicit OpenTofu executable and log level to both resource providers
+    set:
+      global.opentofu.execPath: "/usr/local/bin/tofu"
+      global.opentofu.loglevel: "DEBUG"
+    asserts:
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'opentofu:\n  path: "/terraform"\n  execPath: "/usr/local/bin/tofu"\n  logLevel: "DEBUG"'

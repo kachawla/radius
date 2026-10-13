@@ -69,6 +69,9 @@ type Config struct {
 	// Terraform configures properties for the Terraform recipe driver.
 	Terraform hostoptions.TerraformOptions `yaml:"terraform"`
 
+	// OpenTofu configures properties for the OpenTofu recipe driver.
+	OpenTofu hostoptions.OpenTofuOptions `yaml:"opentofu"`
+
 	// Tracing is the configuration for the tracing system.
 	Tracing traceservice.Options `yaml:"tracerProvider"`
 

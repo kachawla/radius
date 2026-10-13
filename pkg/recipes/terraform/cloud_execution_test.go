@@ -50,6 +50,7 @@ import (
 const terraformBackendSnapshots = "RADIUS_TERRAFORM_BACKEND_SNAPSHOTS"
 
 type backendExecutionSnapshot struct {
+	Executable  string
 	Command     string
 	Args        []string
 	Environment map[string]string
@@ -59,7 +60,7 @@ type backendExecutionSnapshot struct {
 
 // recordBackendTestExecution runs inside a real subprocess launched by terraform-exec.
 func recordBackendTestExecution() error {
-	record := backendExecutionSnapshot{Command: os.Args[1], Args: os.Args[2:], Environment: map[string]string{}}
+	record := backendExecutionSnapshot{Executable: os.Args[0], Command: os.Args[1], Args: os.Args[2:], Environment: map[string]string{}}
 	for _, key := range []string{
 		"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "AWS_ROLE_ARN", "AWS_WEB_IDENTITY_TOKEN_FILE",
 		"AWS_ENDPOINT_URL", "AWS_ENDPOINT_URL_S3", "AWS_S3_ENDPOINT", "AWS_ENDPOINT_URL_STS", "AWS_STS_ENDPOINT",

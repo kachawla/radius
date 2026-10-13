@@ -55,7 +55,27 @@ func NewTerraformDriver(ucpConn sdk.Connection, secretProvider *secretprovider.S
 	return &terraformDriver{
 		terraformExecutor: terraform.NewExecutor(ucpConn, secretProvider, kubernetesClients),
 		options:           options,
+		kind:              recipes.TemplateKindTerraform,
 	}
+}
+
+// NewOpenTofuDriver executes Terraform-compatible modules using OpenTofu.
+func NewOpenTofuDriver(ucpConn sdk.Connection, secretProvider *secretprovider.SecretProvider, options OpenTofuOptions, kubernetesClients kubernetesclientprovider.KubernetesClientProvider) driver.Driver {
+	return &terraformDriver{
+		terraformExecutor: terraform.NewOpenTofuExecutor(ucpConn, secretProvider, kubernetesClients, options.Path, options.ExecPath),
+		options:           TerraformOptions{Path: options.Path, LogLevel: options.LogLevel},
+		kind:              recipes.TemplateKindOpenTofu,
+	}
+}
+
+// OpenTofuOptions configures OpenTofu without changing the Terraform driver.
+type OpenTofuOptions struct {
+	// Path holds execution directories and the versioned OpenTofu binary cache.
+	Path string
+	// ExecPath optionally selects an absolute path to a preinstalled OpenTofu binary.
+	ExecPath string
+	// LogLevel controls OpenTofu execution logs.
+	LogLevel string
 }
 
 // Options represents the options required for execution of Terraform driver.
@@ -74,6 +94,15 @@ type terraformDriver struct {
 
 	// options contains options required to execute a Terraform recipe, such as the path to the directory mounted to the container where Terraform can be executed in sub directories.
 	options TerraformOptions
+
+	kind string
+}
+
+func (d *terraformDriver) templateKind() string {
+	if d.kind == "" {
+		return recipes.TemplateKindTerraform
+	}
+	return d.kind
 }
 
 // Execute creates a unique directory for each execution of terraform and deploys the recipe using the
@@ -239,7 +268,7 @@ func (d *terraformDriver) prepareRecipeResponse(ctx context.Context, definition 
 	}
 
 	recipeResponse.Status = &rpv1.RecipeStatus{
-		TemplateKind:    recipes.TemplateKindTerraform,
+		TemplateKind:    d.templateKind(),
 		TemplatePath:    definition.TemplatePath,
 		TemplateVersion: definition.TemplateVersion,
 	}
@@ -327,6 +356,8 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts driver.Bas
 		RootDir:        requestDirPath,
 		ResourceRecipe: &opts.Recipe,
 		EnvRecipe:      &opts.Definition,
+		EnvConfig:      &opts.Configuration,
+		Secrets:        opts.Secrets,
 		LogLevel:       d.options.LogLevel,
 	})
 
@@ -397,7 +428,7 @@ func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module
 
 	for _, resource := range module.Resources {
 		switch resource.ProviderName {
-		case TerraformKubernetesProvider:
+		case TerraformKubernetesProvider, OpenTofuKubernetesProvider:
 			var resourceType, resourceName, namespace, provider string
 			// For resource type "kubernetes_manifest" get the required details from the manifest property.
 			// https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/manifest
@@ -452,7 +483,7 @@ func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module
 				return []string{}, err
 			}
 			recipeResources = append(recipeResources, kubernetesResourceID)
-		case TerraformAzureProvider:
+		case TerraformAzureProvider, OpenTofuAzureProvider:
 			if resource.AttributeValues != nil {
 				if id, ok := resource.AttributeValues["id"].(string); ok {
 					_, err := resources.ParseResource(id)
@@ -464,7 +495,7 @@ func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module
 					}
 				}
 			}
-		case TerraformAWSProvider:
+		case TerraformAWSProvider, OpenTofuAWSProvider:
 			if resource.AttributeValues != nil {
 				if arn, ok := resource.AttributeValues["arn"].(string); ok {
 					awsResourceID, err := terraformAWSResourceID(configuration.Providers.AWS.Scope, resource, arn)

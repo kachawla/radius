@@ -66,3 +66,7 @@ data:
       deleteRetryDelaySeconds: 60
     terraform:
       path: "/terraform"
+    opentofu:
+      path: "/terraform"
+      execPath: {{ .Values.global.opentofu.execPath | quote }}
+      logLevel: {{ .Values.global.opentofu.loglevel | quote }}
