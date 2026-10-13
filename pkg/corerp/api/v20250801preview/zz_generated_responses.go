@@ -657,14 +657,14 @@ type OperationsClientListResponse struct {
 // RecipePacksClientCreateOrUpdateResponse contains the response from method RecipePacksClient.CreateOrUpdate.
 type RecipePacksClientCreateOrUpdateResponse struct {
 	// The `Radius.Core/recipePacks` Resource Type represents a Recipe Pack: a named collection of Recipes that platform engineers
-	// assign to an Environment. A Recipe maps a resource type (such as `Radius.Data/redisCaches`) to an infrastructure-as-code
-	// module, a Terraform module or Bicep template, that provisions the infrastructure backing that resource when a developer
-	// deploys it.
+	// assign to an Environment. A Recipe maps a resource type (such as `Radius.Data/redisCaches`) to a Bicep template or a Terraform-compatible
+	// module run by Terraform or OpenTofu, which provisions the infrastructure backing that resource when a developer deploys
+	// it.
 	// A Recipe Pack is defined as its own resource and referenced from an Environment's `recipePacks` property, so one Recipe
 	// Pack can be shared across many Environments.
 	// ## Defining a Recipe Pack
-	// Each entry in the `recipes` map is keyed by resource type. Set the recipe `kind` (`bicep` or `terraform`) and its `source`
-	// (an OCI registry reference for Bicep recipes, or a module source for Terraform recipes).
+	// Each entry in the `recipes` map is keyed by resource type. Set the recipe `kind` (`bicep`, `terraform`, or `opentofu`)
+	// and its `source` (an OCI registry reference for Bicep recipes, or a module source for Terraform and OpenTofu recipes).
 	// ```bicep
 	// extension radius
 	// resource dataRecipes 'Radius.Core/recipePacks@2025-08-01-preview' = {
@@ -745,14 +745,14 @@ type RecipePacksClientDeleteResponse struct {
 // RecipePacksClientGetResponse contains the response from method RecipePacksClient.Get.
 type RecipePacksClientGetResponse struct {
 	// The `Radius.Core/recipePacks` Resource Type represents a Recipe Pack: a named collection of Recipes that platform engineers
-	// assign to an Environment. A Recipe maps a resource type (such as `Radius.Data/redisCaches`) to an infrastructure-as-code
-	// module, a Terraform module or Bicep template, that provisions the infrastructure backing that resource when a developer
-	// deploys it.
+	// assign to an Environment. A Recipe maps a resource type (such as `Radius.Data/redisCaches`) to a Bicep template or a Terraform-compatible
+	// module run by Terraform or OpenTofu, which provisions the infrastructure backing that resource when a developer deploys
+	// it.
 	// A Recipe Pack is defined as its own resource and referenced from an Environment's `recipePacks` property, so one Recipe
 	// Pack can be shared across many Environments.
 	// ## Defining a Recipe Pack
-	// Each entry in the `recipes` map is keyed by resource type. Set the recipe `kind` (`bicep` or `terraform`) and its `source`
-	// (an OCI registry reference for Bicep recipes, or a module source for Terraform recipes).
+	// Each entry in the `recipes` map is keyed by resource type. Set the recipe `kind` (`bicep`, `terraform`, or `opentofu`)
+	// and its `source` (an OCI registry reference for Bicep recipes, or a module source for Terraform and OpenTofu recipes).
 	// ```bicep
 	// extension radius
 	// resource dataRecipes 'Radius.Core/recipePacks@2025-08-01-preview' = {
@@ -834,14 +834,14 @@ type RecipePacksClientListByScopeResponse struct {
 // RecipePacksClientUpdateResponse contains the response from method RecipePacksClient.Update.
 type RecipePacksClientUpdateResponse struct {
 	// The `Radius.Core/recipePacks` Resource Type represents a Recipe Pack: a named collection of Recipes that platform engineers
-	// assign to an Environment. A Recipe maps a resource type (such as `Radius.Data/redisCaches`) to an infrastructure-as-code
-	// module, a Terraform module or Bicep template, that provisions the infrastructure backing that resource when a developer
-	// deploys it.
+	// assign to an Environment. A Recipe maps a resource type (such as `Radius.Data/redisCaches`) to a Bicep template or a Terraform-compatible
+	// module run by Terraform or OpenTofu, which provisions the infrastructure backing that resource when a developer deploys
+	// it.
 	// A Recipe Pack is defined as its own resource and referenced from an Environment's `recipePacks` property, so one Recipe
 	// Pack can be shared across many Environments.
 	// ## Defining a Recipe Pack
-	// Each entry in the `recipes` map is keyed by resource type. Set the recipe `kind` (`bicep` or `terraform`) and its `source`
-	// (an OCI registry reference for Bicep recipes, or a module source for Terraform recipes).
+	// Each entry in the `recipes` map is keyed by resource type. Set the recipe `kind` (`bicep`, `terraform`, or `opentofu`)
+	// and its `source` (an OCI registry reference for Bicep recipes, or a module source for Terraform and OpenTofu recipes).
 	// ```bicep
 	// extension radius
 	// resource dataRecipes 'Radius.Core/recipePacks@2025-08-01-preview' = {

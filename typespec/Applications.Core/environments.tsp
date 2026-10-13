@@ -77,7 +77,7 @@ model EnvironmentProperties {
 
 @doc("Configuration for Recipes. Defines how each type of Recipe should be configured and run.")
 model RecipeConfigProperties {
-  @doc("Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as part of Recipe deployment.")
+  @doc("Shared configuration for Terraform and OpenTofu Recipes.")
   terraform?: TerraformConfigProperties;
 
   @doc("Configuration for Bicep Recipes. Controls how Bicep plans and applies templates as part of Recipe deployment.")
@@ -162,7 +162,7 @@ model ProvidersAws {
   scope: string;
 }
 
-@doc("Format of the template provided by the recipe. Allowed values: bicep, terraform.")
+@doc("Format of the template provided by the recipe. Allowed values: bicep, terraform, opentofu.")
 @discriminator("templateKind")
 model RecipeProperties {
   @doc("Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.")
@@ -190,6 +190,15 @@ model TerraformRecipeProperties extends RecipeProperties {
   templateVersion?: string;
 }
 
+@doc("Represents OpenTofu recipe properties for Terraform-compatible modules.")
+model OpenTofuRecipeProperties extends RecipeProperties {
+  @doc("The OpenTofu template kind.")
+  templateKind: "opentofu";
+
+  @doc("Version of the module to deploy. Required for module registry sources, omitted for other module sources.")
+  templateVersion?: string;
+}
+
 @doc("This secret is used within a recipe. Secrets are encrypted, often have fine-grained access control, auditing and are recommended to be used to hold sensitive data.")
 model SecretReference {
   @doc("The ID of an Applications.Core/SecretStore resource containing sensitive data required for recipe execution.")
@@ -210,13 +219,13 @@ model RecipeGetMetadata {
 
 @doc("The properties of a Recipe linked to an Environment.")
 model RecipeGetMetadataResponse {
-  @doc("The format of the template provided by the recipe. Allowed values: bicep, terraform.")
+  @doc("The format of the template provided by the recipe. Allowed values: bicep, terraform, opentofu.")
   templateKind: string;
 
   @doc("The path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.")
   templatePath: string;
 
-  @doc("The version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted for other module sources.")
+  @doc("The version of the template to deploy. For Terraform and OpenTofu recipes using a module registry this is required, but must be omitted for other module sources.")
   templateVersion?: string;
 
   @doc("The key/value parameters to pass to the recipe template at deployment.")

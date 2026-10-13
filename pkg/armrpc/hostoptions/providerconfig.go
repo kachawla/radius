@@ -46,6 +46,7 @@ type ProviderConfig struct {
 	Logging          ucplog.LoggingOptions                `yaml:"logging"`
 	Bicep            BicepOptions                         `yaml:"bicep,omitempty"`
 	Terraform        TerraformOptions                     `yaml:"terraform,omitempty"`
+	OpenTofu         OpenTofuOptions                      `yaml:"opentofu,omitempty"`
 
 	// FeatureFlags includes the list of feature flags.
 	FeatureFlags []string `yaml:"featureFlags"`
@@ -100,5 +101,15 @@ type TerraformOptions struct {
 	Path string `yaml:"path,omitempty"`
 
 	// LogLevel is the log level for Terraform execution (ERROR, DEBUG, etc.).
+	LogLevel string `yaml:"logLevel,omitempty"`
+}
+
+// OpenTofuOptions includes options for the OpenTofu recipe driver.
+type OpenTofuOptions struct {
+	// Path holds execution directories and the binary cache. Defaults to terraform.path.
+	Path string `yaml:"path,omitempty"`
+	// ExecPath is an optional absolute path to a preinstalled OpenTofu binary.
+	ExecPath string `yaml:"execPath,omitempty"`
+	// LogLevel is the OpenTofu execution log level (ERROR, DEBUG, etc.).
 	LogLevel string `yaml:"logLevel,omitempty"`
 }

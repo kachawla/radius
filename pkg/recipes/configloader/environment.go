@@ -31,6 +31,7 @@ import (
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/rp/kube"
 	"github.com/radius-project/radius/pkg/rp/util"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/resources/radius"
 )
@@ -344,7 +345,9 @@ func getRecipeDefinition(environment *v20231001preview.EnvironmentResource, reci
 	}
 	switch c := found.(type) {
 	case *v20231001preview.TerraformRecipeProperties:
-		definition.TemplateVersion = *c.TemplateVersion
+		definition.TemplateVersion = to.String(c.TemplateVersion)
+	case *v20231001preview.OpenTofuRecipeProperties:
+		definition.TemplateVersion = to.String(c.TemplateVersion)
 	case *v20231001preview.BicepRecipeProperties:
 		if c.PlainHTTP != nil {
 			definition.PlainHTTP = *c.PlainHTTP
@@ -385,7 +388,7 @@ func getRecipeDefinitionFromEnvironmentV20250801(ctx context.Context, environmen
 		// split it out here.
 		templatePath := recipeDefinition.Source
 		templateVersion := ""
-		if strings.EqualFold(recipeDefinition.Kind, recipes.TemplateKindTerraform) {
+		if strings.EqualFold(recipeDefinition.Kind, recipes.TemplateKindTerraform) || strings.EqualFold(recipeDefinition.Kind, recipes.TemplateKindOpenTofu) {
 			templatePath, templateVersion = parseTerraformModuleSource(recipeDefinition.Source)
 		}
 

@@ -335,6 +335,40 @@ tools:
         prefix: '    version: "'
         suffix: '"'
 
+  - name: opentofu
+    makePrefix: OPENTOFU
+    version: 1.13.1
+    update: false
+    notes: OpenTofu upgrades require checking terraform-exec compatibility for recipe lifecycle commands.
+    source:
+      type: github-release
+      repository: opentofu/opentofu
+      tagPrefix: v
+      latestURL: https://api.github.com/repos/opentofu/opentofu/releases/latest
+    downloadTemplate: https://github.com/{repository}/releases/download/{tag}/{asset}
+    platforms:
+      linux_amd64:
+        asset: tofu_{version}_linux_amd64.zip
+        checksum: 8ccbc6f8ee21d2827715f3c6e08a9b3e0209b1e62057c05067ef117e047c1a80
+      linux_arm64:
+        asset: tofu_{version}_linux_arm64.zip
+        checksum: b9614df40575cc3fc10a8a25025b7245d961da279f715ea3efff4ddae8e6938a
+      darwin_amd64:
+        asset: tofu_{version}_darwin_amd64.zip
+        checksum: d44ab59ec53fb18e900f4ae3fc8b72e042c9e03ca957860edbaac04e4427218d
+      darwin_arm64:
+        asset: tofu_{version}_darwin_arm64.zip
+        checksum: 81aebe6453223bcb3ce3c28424b36d009ebfddd3ad65ad1ec3eed0d0d574a77b
+    checksumSource:
+      type: github-release-file
+      fileTemplate: tofu_{version}_SHA256SUMS
+      format: standard
+    versionFiles:
+      - path: pkg/recipes/terraform/opentofu.go
+        format: replace
+        prefix: 'var openTofuVersion = "'
+        suffix: '"'
+
   - name: stern
     makePrefix: STERN
     version: v1.34.0

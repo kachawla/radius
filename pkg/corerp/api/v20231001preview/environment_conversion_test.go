@@ -343,15 +343,15 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 		},
 		{
 			filename: "environmentresource-invalid-templatekind.json",
-			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "invalid template kind. Allowed formats: \"bicep\", \"terraform\""},
+			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "invalid template kind. Allowed formats: \"bicep\", \"terraform\", \"opentofu\""},
 		},
 		{
 			filename: "environmentresource-missing-templatekind.json",
-			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "invalid template kind. Allowed formats: \"bicep\", \"terraform\""},
+			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "invalid template kind. Allowed formats: \"bicep\", \"terraform\", \"opentofu\""},
 		},
 		{
 			filename: "environmentresource-terraformrecipe-localpath.json",
-			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: fmt.Sprintf(invalidLocalModulePathFmt, "../not-allowed/")},
+			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: fmt.Sprintf(invalidLocalModulePathFmt, "Terraform", "../not-allowed/")},
 		},
 	}
 
@@ -373,6 +373,61 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 				ct := dm.(*datamodel.Environment)
 				require.Equal(t, tt.expected, ct)
 			}
+		})
+	}
+}
+
+func TestModuleRecipeKindRoundTrip(t *testing.T) {
+	t.Parallel()
+	for _, kind := range []string{recipes.TemplateKindTerraform, recipes.TemplateKindOpenTofu} {
+		t.Run(kind, func(t *testing.T) {
+			t.Parallel()
+			var resource EnvironmentResource
+			require.NoError(t, json.Unmarshal([]byte(fmt.Sprintf(`{
+				"properties": {
+					"compute": {"kind": "kubernetes", "namespace": "default"},
+					"recipes": {"Test.Resources/widgets": {"default": {
+						"templateKind": %q,
+						"templatePath": "example/widgets/aws",
+						"templateVersion": "1.0.0",
+						"parameters": {"size": "small"}
+					}}}
+				}
+			}`, kind)), &resource))
+			if kind == recipes.TemplateKindOpenTofu {
+				require.IsType(t, &OpenTofuRecipeProperties{}, resource.Properties.Recipes["Test.Resources/widgets"]["default"])
+			}
+			model, err := resource.ConvertTo()
+			require.NoError(t, err)
+			definition := model.(*datamodel.Environment).Properties.Recipes["Test.Resources/widgets"]["default"]
+			require.Equal(t, kind, definition.TemplateKind)
+			require.Equal(t, "1.0.0", definition.TemplateVersion)
+			require.Equal(t, "example/widgets/aws", definition.TemplatePath)
+			require.Equal(t, map[string]any{"size": "small"}, definition.Parameters)
+
+			var roundTrip EnvironmentResource
+			require.NoError(t, roundTrip.ConvertFrom(model))
+			encoded, err := json.Marshal(roundTrip.Properties.Recipes)
+			require.NoError(t, err)
+			require.JSONEq(t, fmt.Sprintf(`{"Test.Resources/widgets":{"default":{
+				"templateKind":%q,"templatePath":"example/widgets/aws","templateVersion":"1.0.0","parameters":{"size":"small"}
+			}}}`, kind), string(encoded))
+
+			var metadata RecipeGetMetadataResponse
+			require.NoError(t, metadata.ConvertFrom(&definition))
+			require.Equal(t, kind, *metadata.TemplateKind)
+			require.Equal(t, "1.0.0", *metadata.TemplateVersion)
+		})
+	}
+}
+
+func TestOpenTofuRejectsLocalModulePaths(t *testing.T) {
+	t.Parallel()
+	for _, path := range []string{"/tmp/module", "./module", "../module"} {
+		t.Run(path, func(t *testing.T) {
+			t.Parallel()
+			_, err := toEnvironmentRecipeProperties(&OpenTofuRecipeProperties{TemplatePath: new(path)})
+			require.ErrorContains(t, err, "local module paths are not supported with OpenTofu Recipes")
 		})
 	}
 }

@@ -2200,6 +2200,45 @@ func (m *ManualScalingExtension) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MarshalJSON implements the json.Marshaller interface for type OpenTofuRecipeProperties.
+func (o OpenTofuRecipeProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populate(objectMap, "parameters", o.Parameters)
+	objectMap["templateKind"] = "opentofu"
+	populate(objectMap, "templatePath", o.TemplatePath)
+	populate(objectMap, "templateVersion", o.TemplateVersion)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type OpenTofuRecipeProperties.
+func (o *OpenTofuRecipeProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %s", o, err.Error())
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "parameters":
+			err = unpopulate(val, "Parameters", &o.Parameters)
+			delete(rawMsg, key)
+		case "templateKind":
+			err = unpopulate(val, "TemplateKind", &o.TemplateKind)
+			delete(rawMsg, key)
+		case "templatePath":
+			err = unpopulate(val, "TemplatePath", &o.TemplatePath)
+			delete(rawMsg, key)
+		case "templateVersion":
+			err = unpopulate(val, "TemplateVersion", &o.TemplateVersion)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %s", o, err.Error())
+		}
+	}
+	return nil
+}
+
 // MarshalJSON implements the json.Marshaller interface for type Operation.
 func (o Operation) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)

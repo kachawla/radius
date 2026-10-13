@@ -36,7 +36,7 @@ graph TD
   Worker["dynamic-rp backend worker"]
   DynCtrl["DynamicResourceController<br/>dynamicrp/backend/controller"]
   Engine["Recipe engine<br/>pkg/recipes/engine"]
-  Drivers["Drivers<br/>bicep / terraform"]
+  Drivers["Drivers<br/>bicep / terraform / opentofu"]
   DeploymentEngine["Deployment engine<br/>(Bicep driver)"]
   Infra[Target infrastructure]
 
@@ -195,9 +195,7 @@ through `properties.recipePacks`.
 Registering a recipe on an `Applications.Core/environments` resource means
 including it in a PUT of the whole environment resource: the API replaces
 `properties.recipes` wholesale rather than merging entries. Each entry under
-`properties.recipes[<resourceType>][<recipeName>]` is a `BicepRecipeProperties`
-or `TerraformRecipeProperties` value carrying `TemplateKind`, `TemplatePath`,
-optional `TemplateVersion` / `PlainHTTP`, and any `Parameters`.
+`properties.recipes[<resourceType>][<recipeName>]` is a `BicepRecipeProperties`, `TerraformRecipeProperties`, or `OpenTofuRecipeProperties` value carrying `TemplateKind`, `TemplatePath`, optional `TemplateVersion` / `PlainHTTP`, and any `Parameters`.
 
 The resulting `Applications.Core/environments` shape stores a single recipe per
 resource type under `properties.recipes[<type>].default`:
@@ -290,7 +288,7 @@ sequenceDiagram
   participant RecipeCtrl as RecipePutController / portableresources CreateOrUpdate
   participant CfgLoader as configloader
   participant Eng as Recipe engine
-  participant Drv as bicep or terraform driver
+  participant Drv as bicep, terraform, or opentofu driver
   participant Infra as Target infra
 
   User->>DE: rad deploy app.bicep
@@ -317,7 +315,7 @@ sequenceDiagram
     CfgLoader-->>Eng: EnvironmentDefinition (Driver, TemplatePath, ...)
     Eng->>Eng: lookup driver by EnvironmentDefinition.Driver
     Eng->>Drv: driver.Execute
-    Drv->>Infra: provision (Bicep via deployment engine / Terraform via tf binary)
+    Drv->>Infra: provision (deployment engine / terraform CLI / tofu CLI)
     Drv-->>Eng: RecipeOutput (resources, values, secrets)
     Eng-->>RecipeCtrl: RecipeOutput
     RecipeCtrl->>DB: apply recipe output and save updated resource/status
@@ -401,14 +399,10 @@ The engine
    `Source` into the same `EnvironmentDefinition` shape.
 4. Selects the driver from the engine's `Drivers` map keyed by
    `EnvironmentDefinition.Driver`
-   (see
-   [pkg/recipes/controllerconfig/config.go](../../pkg/recipes/controllerconfig/config.go) —
-   `recipes.TemplateKindBicep` maps to the bicep driver, `TemplateKindTerraform`
-   to the terraform driver).
+   (see [pkg/recipes/controllerconfig/config.go](../../pkg/recipes/controllerconfig/config.go) and [pkg/dynamicrp/options.go](../../pkg/dynamicrp/options.go)): `TemplateKindBicep`, `TemplateKindTerraform`, and `TemplateKindOpenTofu` select the Bicep, Terraform, and OpenTofu drivers.
 5. Loads any driver-required secrets through `DriverWithSecrets` and the
     environment's configured secret stores.
-6. Calls `driver.Execute`. The bicep driver hands the template to the
-   deployment engine; the terraform driver shells out to the terraform binary.
+6. Calls `driver.Execute`. The Bicep driver hands the template to the deployment engine. The Terraform and OpenTofu drivers share module lifecycle code, but invoke `terraform` and `tofu`, respectively, including for metadata inspection and deletion.
 7. Returns a `RecipeOutput` (`Resources`, `Values`, `Secrets`) to the
   controller.
 
@@ -420,6 +414,31 @@ basic Radius properties. The processor does not currently validate dynamic
 recipe output against the full registered schema;
 [pkg/dynamicrp/backend/processor/dynamicresource.go](../../pkg/dynamicrp/backend/processor/dynamicresource.go)
 contains a TODO noting that schema-driven output validation is bypassed.
+
+### OpenTofu Recipes
+
+Set `kind: opentofu` on a recipe-pack entry to run a Terraform-compatible `.tf` or `.tf.json` module with OpenTofu. The `terraform` kind continues to use Terraform.
+
+```yaml
+# Radius.Core/recipePacks
+properties:
+  recipes:
+    Radius.Data/redisCaches:
+      kind: opentofu
+      source: git::https://example.com/recipes.git//redis?ref=v1.0.0
+```
+
+Registry modules use the same `<source>:<version>` convention as Terraform recipes. OpenTofu resolves unqualified registry sources through the OpenTofu Registry; Radius does not fall back to Terraform or the HashiCorp Terraform Registry.
+
+[The OpenTofu installer](../../pkg/recipes/terraform/opentofu.go) downloads the version pinned in [build/tools.yaml](../../build/tools.yaml), verifies the release checksum, and caches the binary separately under `<opentofu.path>/.opentofu/<version>/tofu`. `opentofu.path` defaults to the resource provider's `terraform.path`. An explicit `opentofu.execPath` selects a preinstalled binary, which must identify itself as OpenTofu.
+
+Both kinds use the existing `terraformSettings` resource (or `recipeConfig.terraform` for `Applications.Core`) for provider credentials, CLI configuration, and backend configuration. State keys and Kubernetes secret names are unchanged. Do not switch the kind of an existing deployment in place: this implementation does not migrate state. Native `.tofu` files are not supported by the shared module inspector.
+
+The local lifecycle smoke test downloads the pinned executable and exercises metadata, apply, update, state reads, and destroy using only a built-in provider and local state:
+
+```sh
+RADIUS_TEST_OPENTOFU=1 go test ./pkg/recipes/terraform -run '^TestOpenTofuLocalLifecycle$' -count=1
+```
 
 ### Recipe Secret Outputs
 

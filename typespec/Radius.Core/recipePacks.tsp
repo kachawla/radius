@@ -32,13 +32,13 @@ using TypeSpec.Rest;
 namespace Radius.Core;
 
 @doc("""
-  The `Radius.Core/recipePacks` Resource Type represents a Recipe Pack: a named collection of Recipes that platform engineers assign to an Environment. A Recipe maps a resource type (such as `Radius.Data/redisCaches`) to an infrastructure-as-code module, a Terraform module or Bicep template, that provisions the infrastructure backing that resource when a developer deploys it.
+  The `Radius.Core/recipePacks` Resource Type represents a Recipe Pack: a named collection of Recipes that platform engineers assign to an Environment. A Recipe maps a resource type (such as `Radius.Data/redisCaches`) to a Bicep template or a Terraform-compatible module run by Terraform or OpenTofu, which provisions the infrastructure backing that resource when a developer deploys it.
   
   A Recipe Pack is defined as its own resource and referenced from an Environment's `recipePacks` property, so one Recipe Pack can be shared across many Environments.
   
   ## Defining a Recipe Pack
   
-  Each entry in the `recipes` map is keyed by resource type. Set the recipe `kind` (`bicep` or `terraform`) and its `source` (an OCI registry reference for Bicep recipes, or a module source for Terraform recipes).
+  Each entry in the `recipes` map is keyed by resource type. Set the recipe `kind` (`bicep`, `terraform`, or `opentofu`) and its `source` (an OCI registry reference for Bicep recipes, or a module source for Terraform and OpenTofu recipes).
   
   ```bicep
   extension radius
@@ -152,13 +152,13 @@ model RecipeDefinition {
   @doc("(Optional) Connect to the source using HTTP instead of HTTPS. Use this only when the source does not support HTTPS such as a locally hosted registry for Bicep recipes. Defaults to `false` if not specified.")
   plainHttp?: boolean;
 
-  @doc("(Required) Location of the Recipe. For Bicep Recipes this is an OCI registry reference. For Terraform Recipes this is the module source such as a Git URL or a Terraform registry module.")
+  @doc("(Required) Location of the Recipe. For Bicep Recipes this is an OCI registry reference. For Terraform and OpenTofu Recipes this is a module source, such as a Git URL or a module registry address. OpenTofu uses the OpenTofu Registry by default.")
   source: string;
 
   @doc("(Optional) Default parameter values passed to the Recipe when it runs. An Environment can override these per resource type through its `recipeParameters` property.")
   parameters?: Record<unknown>;
 
-  @doc("(Optional) Maps the module outputs onto the resource type properties for recipes that point directly at a Bicep or Terraform module. Each value is the module output name for a non-secret property. Under the reserved `secrets` key a nested object maps secret property names to module output names and always routes those outputs to the resource secret outputs.")
+  @doc("(Optional) Maps the module outputs onto the resource type properties for recipes that point directly at a Bicep, Terraform, or OpenTofu module. Each value is the module output name for a non-secret property. Under the reserved `secrets` key a nested object maps secret property names to module output names and always routes those outputs to the resource secret outputs.")
   outputs?: Record<unknown>;
 }
 
@@ -166,6 +166,9 @@ model RecipeDefinition {
 enum RecipeKind {
   @doc("Terraform recipe")
   terraform: "terraform",
+
+  @doc("OpenTofu recipe")
+  opentofu: "opentofu",
 
   @doc("Bicep recipe")
   bicep: "bicep",

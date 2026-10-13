@@ -3941,6 +3941,22 @@
       ],
       "x-ms-discriminator-value": "manualScaling"
     },
+    "OpenTofuRecipeProperties": {
+      "type": "object",
+      "description": "Represents OpenTofu recipe properties for Terraform-compatible modules.",
+      "properties": {
+        "templateVersion": {
+          "type": "string",
+          "description": "Version of the module to deploy. Required for module registry sources, omitted for other module sources."
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/RecipeProperties"
+        }
+      ],
+      "x-ms-discriminator-value": "opentofu"
+    },
     "OutputResource": {
       "type": "object",
       "description": "Properties of an output resource.",
@@ -4150,7 +4166,7 @@
       "properties": {
         "terraform": {
           "$ref": "#/definitions/TerraformConfigProperties",
-          "description": "Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as part of Recipe deployment."
+          "description": "Shared configuration for Terraform and OpenTofu Recipes."
         },
         "bicep": {
           "$ref": "#/definitions/BicepConfigProperties",
@@ -4193,7 +4209,7 @@
       "properties": {
         "templateKind": {
           "type": "string",
-          "description": "The format of the template provided by the recipe. Allowed values: bicep, terraform."
+          "description": "The format of the template provided by the recipe. Allowed values: bicep, terraform, opentofu."
         },
         "templatePath": {
           "type": "string",
@@ -4201,7 +4217,7 @@
         },
         "templateVersion": {
           "type": "string",
-          "description": "The version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted for other module sources."
+          "description": "The version of the template to deploy. For Terraform and OpenTofu recipes using a module registry this is required, but must be omitted for other module sources."
         },
         "parameters": {
           "type": "object",
@@ -4221,7 +4237,7 @@
     },
     "RecipeProperties": {
       "type": "object",
-      "description": "Format of the template provided by the recipe. Allowed values: bicep, terraform.",
+      "description": "Format of the template provided by the recipe. Allowed values: bicep, terraform, opentofu.",
       "properties": {
         "templateKind": {
           "type": "string",

@@ -70,6 +70,16 @@ func NewExecutor(ucpConn sdk.Connection, secretProvider *secretprovider.SecretPr
 	return &executor{ucpConn: ucpConn, secretProvider: secretProvider, kubernetesClients: kubernetesClients}
 }
 
+// NewOpenTofuExecutor uses OpenTofu for the shared module lifecycle, including metadata and deletion.
+// installDir holds the versioned binary cache; execPath optionally selects a preinstalled OpenTofu binary.
+func NewOpenTofuExecutor(ucpConn sdk.Connection, secretProvider *secretprovider.SecretProvider, kubernetesClients kubernetesclientprovider.KubernetesClientProvider, installDir, execPath string) *executor {
+	e := NewExecutor(ucpConn, secretProvider, kubernetesClients)
+	e.openTofu = true
+	e.installDir = installDir
+	e.execPath = execPath
+	return e
+}
+
 type executor struct {
 	// ucpConn represents the configuration needed to connect to UCP, required to fetch cloud provider credentials.
 	ucpConn sdk.Connection
@@ -79,6 +89,10 @@ type executor struct {
 
 	// kubernetesClients provides access to the Kubernetes clients.
 	kubernetesClients kubernetesclientprovider.KubernetesClientProvider
+
+	openTofu   bool
+	installDir string
+	execPath   string
 
 	awsCredentials   credentials.CredentialProvider[credentials.AWSCredential]
 	azureCredentials credentials.CredentialProvider[credentials.AzureCredential]
@@ -97,6 +111,14 @@ type executor struct {
 	stateTransport policy.Transporter
 }
 
+func (e *executor) installCLI(ctx context.Context, options Options) (*tfexec.Terraform, error) {
+	opts := InstallOptions{RootDir: options.RootDir, LogLevel: options.LogLevel}
+	if e.openTofu {
+		return installOpenTofu(ctx, opts, e.installDir, e.execPath)
+	}
+	return Install(ctx, install.NewInstaller(), opts)
+}
+
 // backendResult carries the extra lifecycle operations each backend needs after Terraform runs.
 type backendResult struct {
 	// kubernetesSecretName is set only for the Kubernetes backend, whose state secret Radius manages.
@@ -110,9 +132,7 @@ type backendResult struct {
 // Deploy ensures Terraform is available, creates a working directory, generates a config, and runs Terraform init and
 // apply in the working directory, returning an error if any of these steps fail.
 func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, error) {
-	// Install Terraform
-	i := install.NewInstaller()
-	tf, err := Install(ctx, i, InstallOptions{RootDir: options.RootDir, LogLevel: options.LogLevel})
+	tf, err := e.installCLI(ctx, options)
 	if err != nil {
 		return nil, err
 	}
@@ -165,12 +185,7 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 func (e *executor) Delete(ctx context.Context, options Options) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	// Install Terraform
-	i := install.NewInstaller()
-	tf, err := Install(ctx, i, InstallOptions{RootDir: options.RootDir, LogLevel: options.LogLevel})
-	// Note: We use a global shared binary approach, so we should NOT call i.Remove()
-	// as it would remove the shared global binary that other operations might be using.
-	// The global binary will persist across operations to eliminate race conditions.
+	tf, err := e.installCLI(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -238,10 +253,19 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 }
 
 func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[string]any, error) {
-	// Install Terraform
-	i := install.NewInstaller()
-	tf, err := Install(ctx, i, InstallOptions{RootDir: options.RootDir, LogLevel: options.LogLevel})
+	tf, err := e.installCLI(ctx, options)
 	if err != nil {
+		return nil, err
+	}
+
+	// Metadata needs registry credentials, but must not authenticate to the state backend.
+	metadataOptions := options
+	if options.EnvConfig != nil {
+		envConfig := *options.EnvConfig
+		envConfig.TerraformBackend = nil
+		metadataOptions.EnvConfig = &envConfig
+	}
+	if _, err := e.prepareExecution(ctx, tf, metadataOptions); err != nil {
 		return nil, err
 	}
 

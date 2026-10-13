@@ -966,6 +966,31 @@ func (m *ManualScalingExtension) GetExtension() *Extension {
 	}
 }
 
+// OpenTofuRecipeProperties - Represents OpenTofu recipe properties for Terraform-compatible modules.
+type OpenTofuRecipeProperties struct {
+	// CONSTANT; The OpenTofu template kind.
+	// Field has constant value "opentofu", any specified value is ignored.
+	TemplateKind *string
+
+	// REQUIRED; Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
+	TemplatePath *string
+
+	// Key/value parameters to pass to the recipe template at deployment.
+	Parameters map[string]any
+
+	// Version of the module to deploy. Required for module registry sources, omitted for other module sources.
+	TemplateVersion *string
+}
+
+// GetRecipeProperties implements the RecipePropertiesClassification interface for type OpenTofuRecipeProperties.
+func (o *OpenTofuRecipeProperties) GetRecipeProperties() *RecipeProperties {
+	return &RecipeProperties{
+		Parameters:   o.Parameters,
+		TemplateKind: o.TemplateKind,
+		TemplatePath: o.TemplatePath,
+	}
+}
+
 // Operation - REST API Operation
 //
 // Details of a REST API operation, returned from the Resource Provider Operations API
@@ -1107,7 +1132,7 @@ type RecipeConfigProperties struct {
 	// resource.
 	EnvSecrets map[string]*SecretReference
 
-	// Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as part of Recipe deployment.
+	// Shared configuration for Terraform and OpenTofu Recipes.
 	Terraform *TerraformConfigProperties
 }
 
@@ -1125,7 +1150,7 @@ type RecipeGetMetadataResponse struct {
 	// REQUIRED; The key/value parameters to pass to the recipe template at deployment.
 	Parameters map[string]any
 
-	// REQUIRED; The format of the template provided by the recipe. Allowed values: bicep, terraform.
+	// REQUIRED; The format of the template provided by the recipe. Allowed values: bicep, terraform, opentofu.
 	TemplateKind *string
 
 	// REQUIRED; The path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
@@ -1135,12 +1160,12 @@ type RecipeGetMetadataResponse struct {
 	// for example in a locally-hosted registry. Defaults to false (use HTTPS/TLS).
 	PlainHTTP *bool
 
-	// The version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted
-	// for other module sources.
+	// The version of the template to deploy. For Terraform and OpenTofu recipes using a module registry this is required, but
+	// must be omitted for other module sources.
 	TemplateVersion *string
 }
 
-// RecipeProperties - Format of the template provided by the recipe. Allowed values: bicep, terraform.
+// RecipeProperties - Format of the template provided by the recipe. Allowed values: bicep, terraform, opentofu.
 type RecipeProperties struct {
 	// REQUIRED; Discriminator property for RecipeProperties.
 	TemplateKind *string

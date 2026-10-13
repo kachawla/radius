@@ -119,13 +119,14 @@ type ResourceMetadata struct {
 const (
 	TemplateKindBicep     = "bicep"
 	TemplateKindTerraform = "terraform"
+	TemplateKindOpenTofu  = "opentofu"
 
 	// Recipe outputs are expected to be wrapped under an object named "result"
 	ResultPropertyName = "result"
 )
 
 var (
-	SupportedTemplateKind = []string{TemplateKindBicep, TemplateKindTerraform}
+	SupportedTemplateKind = []string{TemplateKindBicep, TemplateKindTerraform, TemplateKindOpenTofu}
 )
 
 // RecipeOutput represents recipe deployment output.
@@ -163,7 +164,7 @@ type RecipePackResource struct {
 
 // RecipeDefinition represents a recipe definition for a specific resource type in a recipe pack.
 type RecipeDefinition struct {
-	// Kind represents the type of recipe (e.g., terraform, bicep)
+	// Kind represents the type of recipe (bicep, terraform, or opentofu).
 	Kind string
 	// Source represents URL or path to the recipe source
 	Source string

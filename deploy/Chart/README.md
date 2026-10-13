@@ -246,6 +246,21 @@ helm upgrade --wait --install radius deploy/Chart -n radius-system \
 
 Valid log levels are: `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, `OFF`. Default is `ERROR`.
 
+### OpenTofu Recipes
+
+Recipes with `kind: opentofu` use a separate OpenTofu executable. Radius downloads the pinned release from `opentofu/opentofu` on first use, verifies its checksum, and caches it under `/terraform/.opentofu/<version>/tofu`. This does not change Terraform's version, init container, or defaults.
+
+For a custom or offline resource-provider image that already contains OpenTofu, set `global.opentofu.execPath` to its absolute path. Radius verifies that this executable is OpenTofu and returns an error rather than falling back to Terraform if it is missing or invalid.
+
+```yaml
+global:
+  opentofu:
+    execPath: "/usr/local/bin/tofu"
+    loglevel: "ERROR"
+```
+
+`execPath` defaults to empty (download on demand); `loglevel` accepts the same values as Terraform logging. Both resource providers receive this configuration. See [OpenTofu recipes](../../docs/architecture/extensibility.md#opentofu-recipes) for recipe selection and the supported module subset.
+
 ### Network Policies
 
 Radius can optionally install Kubernetes `NetworkPolicy` resources that lock down

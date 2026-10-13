@@ -18,6 +18,7 @@ package v20250801preview
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -25,6 +26,29 @@ import (
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 )
+
+func TestRecipePackOpenTofuKind(t *testing.T) {
+	t.Parallel()
+	require.Contains(t, PossibleRecipeKindValues(), RecipeKindOpentofu)
+	require.Contains(t, PossibleRecipeKindValues(), RecipeKindTerraform)
+	for _, kind := range []RecipeKind{RecipeKindTerraform, RecipeKindOpentofu} {
+		t.Run(string(kind), func(t *testing.T) {
+			t.Parallel()
+			var resource RecipePackResource
+			require.NoError(t, json.Unmarshal([]byte(fmt.Sprintf(`{"properties":{"recipes":{
+				"Test.Resources/widgets":{"kind":%q,"source":"example/widgets/aws:1.0.0"}
+			}}}`, kind)), &resource))
+			model, err := resource.ConvertTo()
+			require.NoError(t, err)
+			definition := model.(*datamodel.RecipePack).Properties.Recipes["Test.Resources/widgets"]
+			require.Equal(t, string(kind), definition.Kind)
+			require.Equal(t, "example/widgets/aws:1.0.0", definition.Source)
+			var roundTrip RecipePackResource
+			require.NoError(t, roundTrip.ConvertFrom(model))
+			require.Equal(t, kind, *roundTrip.Properties.Recipes["Test.Resources/widgets"].Kind)
+		})
+	}
+}
 
 func TestRecipePackConvertVersionedToDataModel(t *testing.T) {
 	// Load test data
