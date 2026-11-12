@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 import run from "./close-stale-drafts.mjs";
 
@@ -32,6 +33,7 @@ function fixture(count = 1) {
     labels: []
   }));
   const comments = new Map(prs.map((pr) => [pr.number, []]));
+  const reviewComments = new Map(prs.map((pr) => [pr.number, []]));
   const events = new Map(prs.map((pr) => [pr.number, []]));
   const writes = [];
   const reads = [];
@@ -74,6 +76,9 @@ function fixture(count = 1) {
     return result;
   }
   const pulls = {
+    listReviewComments: method("review-comments", (args) =>
+      reviewComments.get(prFor(args).number)
+    ),
     list: method("list", (args) => {
       assert.equal(args.state ?? "open", "open");
       assert.equal(args.sort, "created");
@@ -153,6 +158,7 @@ function fixture(count = 1) {
   };
   return {
     github,
+    reviewComments,
     prs,
     comments,
     events,
@@ -170,7 +176,7 @@ function fixture(count = 1) {
       run({
         github,
         context: { repo: { owner: "owner", repo: "repo" } },
-        core: { info() {} },
+        core: { info() {}, warning() {} },
         now: time
       })
   };
@@ -329,6 +335,35 @@ test("indirect references and project events do not cancel inactivity", async ()
   await f.run();
   assert.deepEqual(f.writes, ["label", "warn", "close"]);
 });
+
+test("inline comment edits inside clock tolerance cancel closure even without timeline events", async () => {
+  const f = fixture();
+  await f.run();
+  f.reviewComments.get(1).push({
+    id: 101,
+    body: "Updated review comment",
+    user: human,
+    created_at: iso(START - DAY),
+    updated_at: iso(START + 1000)
+  });
+  f.prs[0].updated_at = iso(START + 1000);
+  f.setTime(START + DAY);
+  await f.run();
+  assert.deepEqual(f.writes, ["label", "warn", "unlabel"]);
+});
+
+for (const event of ["reviewed", "line-commented"]) {
+  test(`incomplete ${event} metadata keeps that PR open without blocking other drafts`, async () => {
+    const f = fixture(2);
+    await f.run();
+    f.event(f.prs[0], { event });
+    f.setTime(START + DAY);
+    await f.run();
+    assert.equal(f.prs[0].state, "open");
+    assert.equal(f.prs[1].state, "closed");
+    assert.ok(!f.prs[0].labels.some((label) => label.name === LABEL));
+  });
+}
 
 test("migrates the old stale label off drafts without touching ready PRs", async () => {
   const f = fixture(2);
@@ -514,10 +549,15 @@ test("API read/write errors propagate without further writes", async () => {
     "comments",
     "events",
     "unlabel",
-    "close"
+    "close",
+    "review-comments"
   ]) {
     const f = fixture();
-    if (["comments", "events", "unlabel", "close"].includes(operation)) {
+    if (
+      ["comments", "events", "unlabel", "close", "review-comments"].includes(
+        operation
+      )
+    ) {
       await f.run();
       f.setTime(START + DAY);
       if (operation === "unlabel") f.prs[0].draft = false;
@@ -563,7 +603,9 @@ test("workflow composes draft handler before unchanged review-ready policy", asy
   const script = workflow.match(/script: \|\n((?: {12}.+\n)+)/)[1];
   const f = fixture();
   const previous = process.env.GITHUB_WORKSPACE;
-  process.env.GITHUB_WORKSPACE = process.cwd();
+  process.env.GITHUB_WORKSPACE = fileURLToPath(
+    new URL("../../", import.meta.url)
+  );
   try {
     const execute = new (Object.getPrototypeOf(
       async function () {}
@@ -571,7 +613,7 @@ test("workflow composes draft handler before unchanged review-ready policy", asy
     await execute(
       f.github,
       { repo: { owner: "owner", repo: "repo" } },
-      { info() {} }
+      { info() {}, warning() {} }
     );
     assert.deepEqual(f.writes, ["label", "warn"]);
   } finally {

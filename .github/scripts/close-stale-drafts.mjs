@@ -177,9 +177,21 @@ export default async function closeStaleDrafts({
         )
           return false;
         if (event.event === "reviewed") {
+          if (!event.submitted_at) {
+            core.warning(
+              `PR ${pr.number}: review timestamp is missing; cancelling draft closure.`
+            );
+            return true;
+          }
           return timestamp(event.submitted_at) >= warnedAt;
         }
         if (event.event === "line-commented") {
+          if (!Array.isArray(event.comments)) {
+            core.warning(
+              `PR ${pr.number}: review comments are missing; cancelling draft closure.`
+            );
+            return true;
+          }
           return event.comments.some(
             (comment) => timestamp(comment.updated_at) >= warnedAt
           );
@@ -196,6 +208,18 @@ export default async function closeStaleDrafts({
       continue;
     }
     if (now - warnedAt < DAY) continue;
+    const reviewComments = await github.paginate(
+      github.rest.pulls.listReviewComments,
+      { ...pull, per_page: 100 }
+    );
+    if (
+      reviewComments.some(
+        (comment) => timestamp(comment.updated_at) >= warnedAt
+      )
+    ) {
+      await removeLabel();
+      continue;
+    }
     const current = await read();
     if (!unchanged(pr, current)) {
       core.info(`PR ${pr.number} changed before closure; leaving it open.`);
