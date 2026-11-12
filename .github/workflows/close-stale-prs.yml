@@ -1,4 +1,4 @@
-# This workflow marks PRs as stale after 4 weeks of inactivity, then closes them 1 day later.
+# Drafts get a warning after 7 inactive days; ready PRs after 28. Both get 1 day to respond.
 #
 # For more information, see:
 # https://github.com/actions/stale
@@ -10,19 +10,38 @@ name: Close stale pull requests
 on:
   schedule:
     - cron: 0 18 * * * # Run the workflow every day at 6PM UTC (10AM PST).
+  # workflow_dispatch: # Enable only for deliberate development testing.
 
 permissions: {}
 
+concurrency:
+  group: close-stale-prs
+  cancel-in-progress: false
+
 jobs:
   stale:
+    if: github.repository == 'radius-project/radius'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
+      contents: read
       pull-requests: write
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Reconcile inactive drafts
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { default: closeStaleDrafts } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/close-stale-drafts.mjs`);
+            await closeStaleDrafts({ github, context, core });
       - uses: actions/stale@4391f3da665fdf50b6810c1a66712fb9ba21aa93 # v11.0.0
+        if: ${{ !cancelled() }}
         with:
           repo-token: ${{ github.token }}
+          exempt-draft-pr: true
+          exempt-pr-labels: stale-draft
           stale-pr-message: |
             This pull request has been automatically marked as stale because it has been inactive for 4 weeks. To keep it open, either remove the `stale` label or add a new comment to this pull request. If there is no further activity, it will be closed in 1 day. Feel free to re-open this pull request if you would like to see further activity on it.
           stale-pr-label: stale

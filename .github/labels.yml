@@ -7,6 +7,9 @@
 - name: pr:important
   color: 86a16a
   description: High-impact changes needing special attention during release and in release notes
+- name: stale-draft
+  color: EDEDED
+  description: Draft inactive for 7 days; closes after a 1-day warning without further activity
 # Lifecycle and hold labels share blue; release-impact labels remain green.
 - name: pr:needs-reviewer
   color: 1D76DB
